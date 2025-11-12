@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { useTheme } from "../../context/ThemeContext";
-import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../../context/ThemeContext";
+import { useLanguage } from "../../../context/LanguageContext";
+
 import dynamic from "next/dynamic";
 
 const ResponsiveLine = dynamic(
