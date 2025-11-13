@@ -16,7 +16,8 @@ export const logoutUser = () => {
 };
 
 export const isAuthenticated = () => {
-  return !!Cookies.get("auth_token");
+  const token = Cookies.get("auth_token");
+  return !!token; // Return true hanya jika token ada
 };
 
 export const getAuthToken = () => {

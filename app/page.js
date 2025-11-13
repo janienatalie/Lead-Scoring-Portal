@@ -1,23 +1,31 @@
 "use client";
 import { useState, useEffect } from "react";
-import { loginUser, isAuthenticated } from "./lib/auth";
+import { loginUser, isAuthenticated, logoutUser } from "./lib/auth";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Home() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    setIsClient(true);
+    logoutUser();
+  }, []);
+
+  useEffect(() => {
+    if (isClient && isAuthenticated()) {
       router.push("/dashboard");
     }
-  }, [router]);
+  }, [isClient, router]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -57,8 +65,11 @@ export default function Home() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -79,6 +90,14 @@ export default function Home() {
     </div>
   );
 
+  if (!isClient) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   if (isAuthenticated()) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -88,7 +107,155 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex">
+      {/* Left Side - Logo dan Form */}
+      <div className="w-full md:w-1/2 flex flex-col">
+        {/* Form Section */}
+        <div className="flex-1 flex items-center justify-center px-8">
+          <div className="w-full max-w-md">
+            {/* Logo di atas Login Header */}
+            <div className="flex justify-center mb-8">
+              <div className="flex items-center">
+                <Image
+                  src="/logo.svg"
+                  alt="Lead Score Logo"
+                  width={60}
+                  height={60}
+                  className="w-15 h-15"
+                />
+                <div className="ml-4">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    LEAD SCORE
+                  </h1>
+                  <p className="text-xl font-semibold text-green-600">SIGNS</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Login Header */}
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold text-green-600 mb-4">
+                Login to your Account
+              </h2>
+              <p className="text-gray-600 text-lg">
+                Enter your email and password to access your account
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Email Field */}
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-3">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="example@gmail.com"
+                  className={`w-full px-6 py-4 text-lg border-2 rounded-xl focus:ring-4 focus:ring-green-200 focus:border-green-500 transition-colors ${
+                    errors.email
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
+                  }`}
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-2">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <label className="block text-lg font-semibold text-gray-800 mb-3">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter password"
+                  className={`w-full px-6 py-4 text-lg border-2 rounded-xl focus:ring-4 focus:ring-green-200 focus:border-green-500 transition-colors ${
+                    errors.password
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 bg-gray-50"
+                  }`}
+                />
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-2">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                  className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                />
+                <label className="ml-3 text-lg font-medium text-gray-700">
+                  Remember me
+                </label>
+              </div>
+
+              {/* Login Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-5 px-4 rounded-xl font-semibold text-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-6 w-6 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Logging in...
+                  </span>
+                ) : (
+                  "Login"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Green Background dengan Illustration */}
+      <div className="hidden md:block md:w-1/2 bg-green-600 relative">
+        {/* Illustration di Tengah */}
+        <div className="absolute inset-0 flex items-center justify-center p-8">
+          <Image
+            src="/plugin.svg"
+            alt="Mobile App Illustration"
+            width={500}
+            height={500}
+            className="w-full h-auto max-w-lg"
+            priority
+          />
+        </div>
+      </div>
+
+      {/* Toast Notification */}
       {toast && (
         <Toast
           message={toast.message}
@@ -96,73 +263,6 @@ export default function Home() {
           onClose={() => setToast(null)}
         />
       )}
-
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">LEAD SCORE</h1>
-          <div className="w-24 h-1.5 bg-blue-600 mx-auto mb-4"></div>
-          <p className="text-2xl font-semibold text-gray-700">SIGNS</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Login to your Account
-            </h2>
-            <p className="text-gray-600">
-              Enter your email and password to access your account
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="admin@leadscore.com"
-                className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-gray-50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-lg font-semibold text-gray-800 mb-3">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter password"
-                className="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-gray-50"
-              />
-            </div>
-
-            <div className="text-center py-6 border-t border-gray-200">
-              <p className="text-xl font-medium text-gray-500">Inversion net</p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-semibold text-xl transition-colors"
-            >
-              {isLoading ? "Logging in..." : "Login"}
-            </button>
-          </form>
-        </div>
-
-        <div className="text-center mt-8">
-          <p className="text-gray-500 text-sm">
-            © 2024 Lead Score Portal. All rights reserved.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
