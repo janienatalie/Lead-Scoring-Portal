@@ -14,6 +14,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [isClient, setIsClient] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -73,64 +74,49 @@ export default function Home() {
     }
   };
 
-  const Toast = ({ message, type, onClose }) => (
-    <div
-      className={`fixed top-4 right-4 z-50 p-4 rounded-lg text-white shadow-lg ${
-        type === "success" ? "bg-green-600" : "bg-red-500"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <span>{message}</span>
-        <button onClick={onClose} className="ml-4 text-lg font-bold">
-          ×
-        </button>
-      </div>
-    </div>
-  );
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   if (!isClient) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      {/* LEFT CARD */}
-      <div className="w-full md:w-1/2 flex items-center justify-center px-8">
-        <div className="bg-white w-full max-w-xl rounded-[30px] p-10 shadow-xl">
-          {/* Logo */}
+    <div className="min-h-screen w-full bg-white flex">
+      {/* LEFT SIDE FORM */}
+      <div className="w-full md:w-1/2 flex items-center justify-center px-10">
+        <div className="w-full max-w-md">
+          {/* LOGO */}
           <div className="flex justify-center mb-10">
-            <div className="flex items-center">
-              <Image
-                src="/Logo-light.png"
-                alt="Lead Score Logo"
-                width={55}
-                height={55}
-                className="w-14 h-14"
-              />
-              <div className="ml-3">
-                <h1 className="text-3xl font-bold text-gray-900">LEAD SCORE</h1>
-                <p className="text-lg font-semibold text-green-600">PORTAL</p>
-              </div>
-            </div>
+            <Image
+              src="/Logo-light.png"
+              alt="Logo"
+              width={110}
+              height={110}
+              className="w-[110px]"
+            />
           </div>
 
-          {/* Header */}
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-green-700">
+          {/* TITLE */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-green-700 mb-3">
               Login to your Account
-            </h2>
-            <p className="text-gray-500 mt-2">Enter your email and password</p>
+            </h1>
+            <p className="text-gray-600">
+              Enter your email and password to access your account.
+            </p>
           </div>
 
-          {/* Form */}
+          {/* FORM */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
+            {/* EMAIL */}
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label className="block mb-2 font-semibold text-gray-800">
                 Email
               </label>
               <input
@@ -139,7 +125,7 @@ export default function Home() {
                 placeholder="example@gmail.com"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 rounded-xl border ${
+                className={`w-full px-4 py-3 rounded-lg border ${
                   errors.email ? "border-red-500 bg-red-50" : "border-gray-300"
                 }`}
               />
@@ -148,54 +134,62 @@ export default function Home() {
               )}
             </div>
 
-            {/* Password */}
+            {/* PASSWORD */}
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label className="block mb-2 font-semibold text-gray-800">
                 Password
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder="Enter password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-xl border ${
+                  className={`w-full px-4 py-3 rounded-lg border ${
                     errors.password
                       ? "border-red-500 bg-red-50"
                       : "border-gray-300"
                   }`}
                 />
-                <Image
-                  src="/mdi_eye-off.png"
-                  alt="toggle"
-                  width={24}
-                  height={24}
-                  className="absolute right-3 top-3 opacity-60"
-                />
+
+                {/* EYE ICON */}
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <Image
+                    src={showPassword ? "/mdi_eye-off.png" : "/eye-open.png"}
+                    alt="toggle password"
+                    width={22}
+                    height={22}
+                  />
+                </button>
               </div>
+
               {errors.password && (
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
               )}
             </div>
 
-            {/* Remember Me */}
+            {/* REMEMBER */}
             <div className="flex items-center">
               <input
                 type="checkbox"
                 name="rememberMe"
                 checked={formData.rememberMe}
                 onChange={handleChange}
-                className="w-4 h-4"
+                className="w-4 h-4 text-green-600"
               />
-              <label className="ml-2 text-gray-700">Remember me</label>
+              <label className="ml-2 text-gray-800">Remember me</label>
             </div>
 
-            {/* Submit */}
+            {/* BUTTON */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 text-white py-3 rounded-xl shadow-md hover:bg-green-700"
+              className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700"
             >
               {isLoading ? "Logging in..." : "Login"}
             </button>
@@ -203,26 +197,21 @@ export default function Home() {
         </div>
       </div>
 
-      {/* RIGHT IMAGE */}
-      <div className="hidden md:flex md:w-1/2 bg-green-600 items-center justify-center p-10">
-        <div className="rounded-[40px] overflow-hidden shadow-2xl">
+      {/* RIGHT SIDE — GREEN CURVED */}
+      <div className="hidden md:flex md:w-1/2 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 rounded-l-[70px]"></div>
+
+        <div className="relative z-10 w-full flex items-center justify-center p-10">
           <Image
             src="/login.png"
+            alt="illustration"
             width={500}
             height={500}
-            alt="Login Illustration"
-            className="w-full h-full object-cover"
+            className="w-[420px] h-auto"
+            priority
           />
         </div>
       </div>
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
     </div>
   );
 }
