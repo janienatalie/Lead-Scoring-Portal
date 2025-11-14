@@ -2,7 +2,7 @@ import Cookies from "js-cookie";
 
 export const loginUser = async (email, password) => {
   // Simulasi API call
-  if (email === "admin@leadscore.com" && password === "password123") {
+  if (email === "admin@gmail.com" && password === "admin123") {
     const token = "mock-jwt-token-" + Date.now();
     Cookies.set("auth_token", token, { expires: 1 });
     return { success: true, token };
