@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useRouter } from "next/navigation";
-import { loginUser } from "./lib/auth";
+import { saveToken } from "./lib/auth";
 
 const LoginPage = () => {
   const { theme } = useTheme();
@@ -45,16 +45,30 @@ const LoginPage = () => {
   const t = translations[lang];
 
   const handleLogin = async (e) => {
-    e.preventDefault(); // Mencegah reload halaman
-    setError(""); // Bersihkan error sebelumnya
+    e.preventDefault();
+    setError("");
 
-    const result = await loginUser(email, password);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (result.success) {
-      router.push("/dashboard"); // Arahkan ke dashboard jika berhasil
-    } else {
-      // Tampilkan pesan error
-      setError(t.invalidLogin);
+      const data = await res.json();
+
+      if (data.success) {
+        // Jika berhasil, simpan token ke cookie
+        saveToken(data.token);
+        router.push("/dashboard"); // Arahkan ke dashboard
+      } else {
+        // Jika gagal, tampilkan pesan error dari API
+        setError(t.invalidLogin);
+      }
+    } catch (err) {
+      setError("Tidak dapat terhubung ke server.");
     }
   };
 

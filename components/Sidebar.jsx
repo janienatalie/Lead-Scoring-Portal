@@ -6,11 +6,14 @@ import Image from "next/image";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { logoutUser } from "../app/lib/auth"; // <-- Path ini mungkin perlu disesuaikan
 
 const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { lang, setLanguage } = useLanguage();
   const pathname = usePathname();
+  const router = useRouter();
 
   const translations = {
     en: {
@@ -23,6 +26,8 @@ const Sidebar = () => {
       indonesian: "Indonesian",
       english: "English",
       mainMenu: "MAIN MENU",
+      // --- TAMBAHAN ---
+      logoutConfirm: "Are you sure you want to log out?",
     },
     id: {
       dashboard: "Dasbor",
@@ -34,6 +39,8 @@ const Sidebar = () => {
       indonesian: "Indonesia",
       english: "Inggris",
       mainMenu: "MENU UTAMA",
+      // --- TAMBAHAN ---
+      logoutConfirm: "Apakah Anda yakin ingin keluar?",
     },
   };
 
@@ -42,6 +49,17 @@ const Sidebar = () => {
   const handleThemeSwitch = (newTheme) => {
     setTheme(newTheme);
   };
+
+  // --- FUNGSI HANDLE LOGOUT DIPERBARUI ---
+  const handleLogout = () => {
+    // Tampilkan pesan konfirmasi
+    if (window.confirm(t.logoutConfirm)) {
+      logoutUser(); // Hapus cookie
+      router.push("/"); // Arahkan ke halaman login
+    }
+    // Jika "Cancel", tidak terjadi apa-apa
+  };
+  // --- AKHIR FUNGSI ---
 
   const inactiveIconColor = theme === "dark" ? "#A0A0A0" : "#888";
 
@@ -75,7 +93,7 @@ const Sidebar = () => {
             {t.mainMenu}
           </h3>
           <ul>
-            {/* Ikon Dashboard (Tidak berubah dari sebelumnya) */}
+            {/* ... (Link Dashboard & Lead Score tidak berubah) ... */}
             <li className="mb-2">
               <Link
                 href="/dashboard"
@@ -111,8 +129,6 @@ const Sidebar = () => {
                 {t.dashboard}
               </Link>
             </li>
-
-            {/* --- AWAL PERUBAHAN IKON LEAD SCORE (Garis Panah Ke Atas) --- */}
             <li className="mb-2">
               <Link
                 href="/leadscore"
@@ -127,7 +143,6 @@ const Sidebar = () => {
                 `}
               >
                 <span className="mr-3">
-                  {/* Ikon Garis Panah Ke Atas (Mirip gambar yang Anda berikan) */}
                   <svg
                     width="24"
                     height="24"
@@ -138,7 +153,6 @@ const Sidebar = () => {
                     strokeLinejoin="round"
                     xmlns="http://www.w3.org/2000/svg"
                   >
-                    {/* Path ini membuat bentuk garis naik dan panah */}
                     <path
                       d="M3 17L9 11L13 15L21 7M21 7H15M21 7V13"
                       stroke={
@@ -150,7 +164,6 @@ const Sidebar = () => {
                 {t.leadScore}
               </Link>
             </li>
-            {/* --- AKHIR PERUBAHAN IKON LEAD SCORE --- */}
           </ul>
         </nav>
       </div>
@@ -162,9 +175,10 @@ const Sidebar = () => {
         </h3>
 
         <ul className="mb-6">
+          {/* Tombol Logout (tidak berubah, tapi fungsinya sudah diupdate) */}
           <li className="mb-3">
-            <Link
-              href="/logout"
+            <button
+              onClick={handleLogout}
               className={`flex items-center p-2 rounded-lg ${
                 theme === "dark"
                   ? "hover:bg-darkSecondary"
@@ -203,11 +217,11 @@ const Sidebar = () => {
                 </svg>
               </span>
               {t.logout}
-            </Link>
+            </button>
           </li>
         </ul>
 
-        {/* Theme Toggle (Tidak berubah dari sebelumnya) */}
+        {/* Theme Toggle (Tidak berubah) */}
         <div
           className={`p-1 rounded-full flex relative transition-colors duration-300
           ${
