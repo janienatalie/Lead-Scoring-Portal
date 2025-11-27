@@ -198,7 +198,7 @@ const DashboardPage = () => {
 
           {/* Conversion Rate Card */}
           <div
-            className={`p-6 rounded-lg shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
+            className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
           >
             <h2 className="text-sm ext-textGrayLight dark:text-darkFontColor mb-4 min-h-6">
               {t.conversionRate}

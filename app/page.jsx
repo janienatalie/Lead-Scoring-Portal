@@ -25,7 +25,7 @@ const LoginPage = () => {
       emailPlaceholder: "example@gmail.com",
       password: "Password",
       passwordPlaceholder: "Enter password",
-      remember: "Remember me",
+      // remember: "Remember me",
       login: "Login",
       invalidLogin: "Invalid email or password",
     },
@@ -60,11 +60,12 @@ const LoginPage = () => {
       const data = await res.json();
 
       if (data.success) {
-        // Jika berhasil, simpan token ke cookie
-        saveToken(data.token);
-        router.push("/dashboard"); // Arahkan ke dashboard
+        if (data.user) {
+          localStorage.setItem("user_info", JSON.stringify(data.user));
+        }
+
+        router.push("/dashboard");
       } else {
-        // Jika gagal, tampilkan pesan error dari API
         setError(t.invalidLogin);
       }
     } catch (err) {
@@ -202,7 +203,7 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t.passwordPlaceholder}
-                  className={`w-full p-3 rounded-xl border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary`}
+                  className={`w-full p-3 pr-10 rounded-xl border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary`}
                 />
                 <button
                   type="button"
@@ -215,7 +216,7 @@ const LoginPage = () => {
             </div>
 
             {/* Remember Me */}
-            <div className="flex items-center">
+            {/* <div className="flex items-center">
               <input
                 id="remember-me"
                 name="remember-me"
@@ -228,10 +229,10 @@ const LoginPage = () => {
               >
                 {t.remember}
               </label>
-            </div>
+            </div> */}
 
             {/* Tombol Login */}
-            <div>
+            <div className="pt-4">
               <button
                 type="submit"
                 className="w-full px-4 py-3 text-white bg-gradient-to-r from-primary to-secondary rounded-xl transition-all duration-200 hover:brightness-110 text-sm font-semibold"
