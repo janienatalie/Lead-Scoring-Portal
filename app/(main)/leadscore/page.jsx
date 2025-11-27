@@ -1,12 +1,33 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "../../../context/ThemeContext";
 import { useLanguage } from "../../../context/LanguageContext";
 
 const LeadScorePage = () => {
   const { theme } = useTheme();
   const { lang } = useLanguage();
+  const [filterScore, setFilterScore] = useState("");
+  const router = useRouter();
+  const [tableData, setTableData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/leadscore");
+        const result = await res.json();
+        setTableData(result.tableData || []); // pastikan array
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+        setTableData([]); // fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const translations = {
     en: {
@@ -47,65 +68,65 @@ const LeadScorePage = () => {
 
   const t = translations[lang];
 
-  // Mock data untuk tabel
-  const tableData = [
-    {
-      name: "John Doe",
-      score: 90,
-      age: 40,
-      job: t.technician,
-      lastContact: `2 ${t.daysAgo}`,
-    },
-    {
-      name: "Jane Smith",
-      score: 85,
-      age: 32,
-      job: t.designer,
-      lastContact: `1 ${t.daysAgo}`,
-    },
-    {
-      name: "Michael Bay",
-      score: 82,
-      age: 45,
-      job: t.manager,
-      lastContact: `3 ${t.daysAgo}`,
-    },
-    {
-      name: "Sarah Lee",
-      score: 78,
-      age: 29,
-      job: t.developer,
-      lastContact: `5 ${t.daysAgo}`,
-    },
-    {
-      name: "David Kim",
-      score: 75,
-      age: 37,
-      job: t.technician,
-      lastContact: `4 ${t.daysAgo}`,
-    },
-    {
-      name: "Emily White",
-      score: 70,
-      age: 28,
-      job: t.designer,
-      lastContact: `6 ${t.daysAgo}`,
-    },
-    {
-      name: "Chris Evans",
-      score: 68,
-      age: 42,
-      job: t.manager,
-      lastContact: `6 ${t.daysAgo}`,
-    },
-    {
-      name: "Anna Scott",
-      score: 65,
-      age: 33,
-      job: t.developer,
-      lastContact: `7 ${t.daysAgo}`,
-    },
-  ];
+  // // Mock data untuk tabel
+  // const tableData = [
+  //   {
+  //     name: "John Doe",
+  //     score: 90,
+  //     age: 40,
+  //     job: t.technician,
+  //     lastContact: `2 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Jane Smith",
+  //     score: 85,
+  //     age: 32,
+  //     job: t.designer,
+  //     lastContact: `1 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Michael Bay",
+  //     score: 82,
+  //     age: 45,
+  //     job: t.manager,
+  //     lastContact: `3 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Sarah Lee",
+  //     score: 78,
+  //     age: 29,
+  //     job: t.developer,
+  //     lastContact: `5 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "David Kim",
+  //     score: 75,
+  //     age: 37,
+  //     job: t.technician,
+  //     lastContact: `4 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Emily White",
+  //     score: 70,
+  //     age: 28,
+  //     job: t.designer,
+  //     lastContact: `6 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Chris Evans",
+  //     score: 68,
+  //     age: 42,
+  //     job: t.manager,
+  //     lastContact: `6 ${t.daysAgo}`,
+  //   },
+  //   {
+  //     name: "Anna Scott",
+  //     score: 65,
+  //     age: 33,
+  //     job: t.developer,
+  //     lastContact: `7 ${t.daysAgo}`,
+  //   },
+  // ];
 
   // Definisi kelas untuk styling
   const textColorClass =
@@ -296,7 +317,10 @@ const LeadScorePage = () => {
                       {lead.lastContact}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm">
+                      <button
+                        onClick={() => router.push(`/nasabah/${index + 20777}`)}
+                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm"
+                      >
                         {t.viewDetails}
                       </button>
                     </td>
