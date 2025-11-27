@@ -1,63 +1,77 @@
+// app/api/login/route.js
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import db from "../../lib/db"; // <-- Impor koneksi database
+import db from "../../lib/db";
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const { email, password } = body;
 
-    // 1. Cek input
     if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: "Email and password are required" },
+        { success: false, message: "Email dan password wajib diisi" },
         { status: 400 }
       );
     }
 
-    // 2. Cari pengguna di database
     const [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [
       email,
     ]);
 
-    // 3. Jika pengguna tidak ditemukan
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Invalid email or password" },
+        { success: false, message: "Email atau password salah" },
         { status: 401 }
       );
     }
 
     const user = rows[0];
-
-    // 4. Bandingkan kata sandi
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
       return NextResponse.json(
-        { success: false, message: "Invalid email or password" },
+        { success: false, message: "Email atau password salah" },
         { status: 401 }
       );
     }
 
-    // 5. Buat Token JWT (Sukses)
+    // Buat token
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        // Anda bisa tambahkan data lain di sini
+        name: user.name,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" } // Token berlaku 1 jam
+      { expiresIn: "1d" }
     );
 
-    // 6. Kirim token ke client
-    return NextResponse.json({ success: true, token });
+    // Buat response
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        email: user.email,
+        name: user.name,
+      },
+    });
+
+    // Set cookie HttpOnly (aman)
+    response.cookies.set({
+      name: "auth_token",
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24, // 1 hari
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
-    console.error("Login API Error:", error);
+    console.error("Login Error:", error);
     return NextResponse.json(
-      { success: false, message: "An internal server error occurred" },
+      { success: false, message: "Terjadi kesalahan pada server" },
       { status: 500 }
     );
   }

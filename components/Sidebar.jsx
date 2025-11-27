@@ -13,7 +13,7 @@ const Sidebar = () => {
   const { theme, setTheme } = useTheme();
   const { lang, setLanguage } = useLanguage();
   const pathname = usePathname();
-  const router = useRouter();
+  // const router = useRouter();
 
   const translations = {
     en: {
@@ -51,15 +51,27 @@ const Sidebar = () => {
   };
 
   // --- FUNGSI HANDLE LOGOUT DIPERBARUI ---
-  const handleLogout = () => {
-    // Tampilkan pesan konfirmasi
-    if (window.confirm(t.logoutConfirm)) {
-      logoutUser(); // Hapus cookie
-      router.push("/"); // Arahkan ke halaman login
+  // Tambahkan 'async' di sini
+  const handleLogout = async () => {
+    // 1. Konfirmasi
+    const isConfirmed = window.confirm(t.logoutConfirm);
+
+    if (isConfirmed) {
+      try {
+        // 2. Hapus cookie di server
+        await logoutUser();
+
+        // 3. Hapus data user di localStorage (TAPI JANGAN HAPUS "theme")
+        localStorage.removeItem("user_info");
+
+        // 4. SOLUSI UTAMA: Gunakan Hard Reload
+        // Ini memaksa browser refresh, sehingga ThemeContext membaca ulang localStorage
+        window.location.href = "/";
+      } catch (error) {
+        console.error("Logout error", error);
+      }
     }
-    // Jika "Cancel", tidak terjadi apa-apa
   };
-  // --- AKHIR FUNGSI ---
 
   const inactiveIconColor = theme === "dark" ? "#A0A0A0" : "#888";
 
