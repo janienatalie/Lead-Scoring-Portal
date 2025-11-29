@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -8,6 +8,15 @@ import { useLanguage } from "../context/LanguageContext";
 const Navbar = () => {
   const { theme } = useTheme();
   const { lang, setLanguage } = useLanguage();
+
+  const [user, setUser] = useState({ username: "", email: "" });
+
+  useEffect(() => {
+    fetch("/api/users") // pastikan endpoint ini sesuai route GET
+      .then((res) => res.json())
+      .then((data) => setUser(data))
+      .catch((err) => console.error(err));
+  }, []);
 
   const handleLanguageToggle = () => {
     setLanguage(lang === "en" ? "id" : "en");
@@ -25,7 +34,7 @@ const Navbar = () => {
     <nav
       className={`sticky top-0 z-10 flex h-20 w-full items-center justify-end space-x-4 px-8 ${cardBgClass} border-b ${tableBorderColor} shadow-sm ${textColorClass}`}
     >
-      {/* Tombol Bahasa (Tidak berubah) */}
+      {/* Tombol Bahasa */}
       <button
         onClick={handleLanguageToggle}
         className="flex items-center space-x-2 bg-gradient-to-r from-primary to-secondary text-white px-4 py-2 rounded-full transition-all duration-200 hover:brightness-110"
@@ -38,13 +47,11 @@ const Navbar = () => {
           xmlns="http://www.w3.org/2000/svg"
         >
           {lang === "id" ? (
-            // Bendera Indonesia
             <>
               <rect x="2" y="6" width="20" height="6" fill="#EF4444" />
               <rect x="2" y="12" width="20" height="6" fill="#FFFFFF" />
             </>
           ) : (
-            // Bendera Inggris (UK)
             <>
               <rect x="2" y="6" width="20" height="12" fill="#0A3161" />
               <path d="M2 12H22M12 6V18" stroke="#FFFFFF" strokeWidth="2" />
@@ -52,12 +59,10 @@ const Navbar = () => {
             </>
           )}
         </svg>
-        <span className="font-semibold text-sm">
-          {lang === "id" ? "ID" : "EN"}
-        </span>
+        <span className="font-semibold text-sm">{lang === "id" ? "ID" : "EN"}</span>
       </button>
 
-      {/* Ikon Notifikasi (Bell) Outline */}
+      {/* Notifikasi */}
       <div
         className={`p-2 rounded-full ${cardBgClass} shadow-custom-sm border ${tableBorderColor}`}
       >
@@ -85,7 +90,7 @@ const Navbar = () => {
         </svg>
       </div>
 
-      {/* Ikon Pesan (Mail) Outline */}
+      {/* Pesan */}
       <div
         className={`p-2 rounded-full ${cardBgClass} shadow-custom-sm border ${tableBorderColor}`}
       >
@@ -120,24 +125,22 @@ const Navbar = () => {
         }`}
       ></div>
 
-      {/* --- AWAL PERUBAHAN AVATAR --- */}
+      {/* Avatar + username/email dinamis */}
       <div className="flex items-center">
         <div className="relative w-10 h-10 mr-2">
-          {/* Tambahkan div wrapper dengan ukuran tetap dan relative */}
           <Image
             src="/profile1.jpeg"
             alt="Avatar"
-            fill // Gunakan prop fill agar gambar mengisi container
-            className="rounded-full object-cover" // object-cover penting untuk mengisi dan memotong gambar
+            fill
+            className="rounded-full object-cover"
             priority
           />
         </div>
         <div>
-          <p className="font-semibold text-sm">Kireisha Adinata</p>
-          <p className="text-xs text-gray-500">kireisha@gmail.com</p>
+          <p className="font-semibold text-sm">{user.username || "Loading..."}</p>
+          <p className="text-xs text-gray-500">{user.email || "Loading..."}</p>
         </div>
       </div>
-      {/* --- AKHIR PERUBAHAN AVATAR --- */}
     </nav>
   );
 };
