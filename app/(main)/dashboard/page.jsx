@@ -12,6 +12,12 @@ const ResponsiveLine = dynamic(
   { ssr: false }
 );
 
+const ResponsivePie = dynamic(
+  () => import("@nivo/pie").then((m) => m.ResponsivePie),
+  { ssr: false }
+);
+
+
 const DashboardPage = () => {
   const { theme } = useTheme();
   const { lang } = useLanguage();
@@ -39,6 +45,7 @@ const DashboardPage = () => {
       contacted: "Contacted",
       new: "New",
       converted: "Converted",
+      jobDistribution: "Job Distribution",
       others: "Others",
     },
     id: {
@@ -64,6 +71,7 @@ const DashboardPage = () => {
       new: "Baru",
       converted: "Dikonversi",
       others: "Lainnya",
+      jobDistributionId: "Distribusi Pekerjaan",
     },
   };
 
@@ -117,13 +125,18 @@ const DashboardPage = () => {
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-1">{t.welcome}</h1>
-          <p className="text-sm ext-textGrayLight dark:text-darkFontColor">
-            {t.date}
-          </p>
+            <p className="text-sm ext-textGrayLight dark:text-darkFontColor">
+              {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
         </div>
 
         {/* Stats Cards */}
-        <section className="flex flex-wrap justify-center gap-4 mb-8">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {/* Total Leads */}
           <div className={`p-6 w-full md:w-80 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}>
 
@@ -187,52 +200,100 @@ const DashboardPage = () => {
                   pointBorderWidth={2}
                   useMesh={true}
                   colors={["#227D53"]}
+                  theme={{
+                    axis: {
+                      domain: {
+                        line: { stroke: theme === "dark" ? "#888" : "#555" } // garis sumbu
+                      },
+                      ticks: {
+                        line: { stroke: theme === "dark" ? "#888" : "#555" },
+                        text: { fill: theme === "dark" ? "#E5E5E5" : "#333" }
+                      },
+                    },
+                    grid: {
+                      line: {
+                        stroke: theme === "dark" ? "#666" : "#ccc", // grid lebih kontras
+                        strokeWidth: 1
+                      }
+                    },
+                    labels: { text: { fill: theme === "dark" ? "#E5E5E5" : "#333" } },
+                    
+                    // >>> INI ADALAH PENYESUAIAN UNTUK GARIS CROSSHAIR/TOOLTIP INTERAKTIF
+                    crosshair: {
+                      line: {
+                        // Menggunakan warna terang di mode gelap (dark) agar terlihat kontras
+                        stroke: theme === "dark" ? "#F0F0F0" : "#777",
+                        strokeWidth: 1,
+                        strokeDasharray: "6 6" // Memastikan garisnya putus-putus
+                      }
+                    },
+                    // <<< AKHIR PENYESUAIAN CROSSHAIR
+                    
+                    tooltip: {
+                      container: {
+                        background: theme === "dark" ? "#1E2D26" : "#fff",
+                        color: theme === "dark" ? "#E5E5E5" : "#333",
+                      },
+                    },
+                  }}
                 />
               )}
             </div>
           </div>
 
-          {/* Job Distribution Chart */}
+          {/* Job Distribution Chart (Pie) */}
           <div className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Job Distribution</h2>
+              <h2 className="text-lg font-semibold">
+                {lang === "id" ? t.jobDistributionId : t.jobDistribution}
+              </h2>
             </div>
             <div className="h-64">
               {jobData.length > 0 && (
-                <ResponsiveLine
-                  data={[
+                <ResponsivePie
+                  data={jobData.map((j) => ({
+                    id: j.label,
+                    label: j.label,
+                    value: j.value,
+                  }))}
+                  margin={{ top: 20, right: 20, bottom: 60, left: 20 }} // bawah lebih untuk legend
+                  innerRadius={0.5}
+                  padAngle={1}
+                  cornerRadius={5}
+                  colors={{ scheme: 'paired' }}
+                  borderWidth={1}
+                  borderColor={{
+                    from: 'color',
+                    modifiers: [['darker', 0.3]],
+                  }}
+                  enableArcLinkLabels={false}
+                  arcLabelsTextColor={{
+                    from: 'color',
+                    modifiers: [['darker', 2]],
+                  }}
+                  legends={[
                     {
-                      id: "Jobs",
-                      data: jobData.map((j) => ({
-                        x: j.label,
-                        y: j.value,
-                      })),
+                      anchor: 'bottom',
+                      direction: 'row',
+                      justify: false,
+                      translateX: 0,
+                      translateY: 40, // jarak legend dari chart
+                      itemsSpacing: 10,
+                      itemWidth: 100,
+                      itemHeight: 20,
+                      itemDirection: 'left-to-right',
+                      itemTextColor: theme === "dark" ? "#E5E5E5" : "#333",
+                      symbolSize: 16,
+                      symbolShape: 'circle',
                     },
                   ]}
-                  margin={{ top: 20, right: 30, bottom: 60, left: 60 }}
-                  xScale={{ type: "point" }}
-                  yScale={{ type: "linear", min: 0, max: "auto" }}
-                  axisTop={null}
-                  axisRight={null}
-                  axisBottom={{ tickRotation: -45, tickSize: 5, tickPadding: 5 }}
-                  axisLeft={{ tickSize: 5, tickPadding: 5 }}
-                  pointSize={10}
-                  pointColor={{ theme: "background" }}
-                  pointBorderWidth={2}
-                  pointBorderColor={{ from: "serieColor" }}
-                  useMesh={true}
-                  colors={["#227D53"]}
                   theme={{
-                    axis: {
-                      domain: { line: { stroke: theme === "dark" ? "#888" : "#ccc" } },
-                      ticks: { line: { stroke: theme === "dark" ? "#888" : "#ccc" } },
-                      text: { fill: theme === "dark" ? "#E5E5E5" : "#333" },
-                    },
-                    grid: { line: { stroke: theme === "dark" ? "#3A3A3A" : "#eee" } },
+                    grid: { line: { stroke: theme === 'dark' ? '#444' : '#ddd' } },
+                    labels: { text: { fill: theme === 'dark' ? '#E5E5E5' : '#333' } },
                     tooltip: {
                       container: {
-                        background: theme === "dark" ? "#1E2D26" : "#fff",
-                        color: theme === "dark" ? "#E5E5E5" : "#333",
+                        background: theme === 'dark' ? '#1E2D26' : '#fff',
+                        color: theme === 'dark' ? '#E5E5E5' : '#333',
                       },
                     },
                   }}

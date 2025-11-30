@@ -13,20 +13,27 @@ const tableData = [...data]
     name: `Lead ${lead.id}`,
     score: lead.leadScore,
     age: lead.age,
-    job: lead.job.charAt(0).toUpperCase() + lead.job.slice(1),
-    lastContact: `${lead.day_of_week.charAt(0).toUpperCase() + lead.day_of_week.slice(1)}, ${lead.month.charAt(0).toUpperCase() + lead.month.slice(1)}`,
+    job: lead.job
+    .replace(/\./g, "")              
+    .charAt(0).toUpperCase() + 
+    lead.job.replace(/\./g, "").slice(1),
+    lastContact: lead.month?.charAt(0).toUpperCase() + lead.month?.slice(1) || "-"
   }));
 
 // --- Total leads ---
 const totalLeads = data.length;
 
 // --- High potential ---
-const highPotentialLeads = data.filter((lead) => Math.round(lead.confidence) > 50).length;
+const highPotentialLeads = data.filter(
+  (lead) => lead.confidence >= 70
+).length;
+
 
 // --- Average score ---
-const averageLeadScore = Math.round(
-  data.reduce((sum, lead) => sum + Math.round(lead.confidence), 0) / totalLeads
-);
+const averageLeadScore = (
+  data.reduce((sum, lead) => sum + lead.confidence, 0) / data.length
+).toFixed(2);  // dua desimal, lebih rapi
+
 
 // --- Hitung job distribution ---
 const jobCountMap = {};
