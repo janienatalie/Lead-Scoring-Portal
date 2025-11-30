@@ -4,24 +4,42 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../../../context/ThemeContext";
 import { useLanguage } from "../../../context/LanguageContext";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const LeadScorePage = () => {
   const { theme } = useTheme();
   const { lang } = useLanguage();
-  const [filterScore, setFilterScore] = useState("");
   const router = useRouter();
-  const [tableData, setTableData] = useState([]);
+
+  // --- STATE MANAGEMENT ---
+  const [tableData, setTableData] = useState([]); // Menampung RIBUAN data
   const [loading, setLoading] = useState(true);
 
+  // Filter & Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterJob, setFilterJob] = useState("");
+  const [filterScore, setFilterScore] = useState("");
+
+  // Sorting State (Baru)
+  // 'desc' = Descending (90, 80, 70) - Default
+  // 'asc' = Ascending (40, 50, 60)
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Batas data per halaman
+
+  // --- 1. FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch("/api/leadscore");
         const result = await res.json();
-        setTableData(result.tableData || []); // pastikan array
+        setTableData(result.tableData || []);
       } catch (err) {
         console.error("Failed to fetch data:", err);
-        setTableData([]); // fallback
+        setTableData([]);
       } finally {
         setLoading(false);
       }
@@ -29,106 +47,163 @@ const LeadScorePage = () => {
     fetchData();
   }, []);
 
+  // --- 2. LOGIC FILTERING ---
+  const filteredData = tableData.filter((item) => {
+    // A. Search (Mencari di Nama, Job Inggris, atau Job Indo)
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      (item.name && item.name.toLowerCase().includes(query)) ||
+      (item.job && item.job.toLowerCase().includes(query)) ||
+      (item.job_id && item.job_id.toLowerCase().includes(query));
+
+    // B. Filter Job (Mencocokkan dengan Job Inggris - Canonical Value)
+    const matchesJob =
+      filterJob === "" || filterJob === "Job" || item.job === filterJob;
+
+    // C. Filter Score (3 Kategori)
+    let matchesScore = true;
+    if (filterScore === ">70") {
+      matchesScore = item.score >= 70;
+    } else if (filterScore === "40-69") {
+      matchesScore = item.score >= 40 && item.score <= 69;
+    } else if (filterScore === "<40") {
+      matchesScore = item.score < 40;
+    }
+
+    return matchesSearch && matchesJob && matchesScore;
+  });
+
+  // --- LOGIC SORTING (BARU) ---
+  // Mengurutkan filteredData berdasarkan sortOrder
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (sortOrder === "asc") {
+      return a.score - b.score; // Kecil ke Besar
+    } else {
+      return b.score - a.score; // Besar ke Kecil (Default)
+    }
+  });
+
+  // --- 3. LOGIC PAGINATION ---
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+
+  // GUNAKAN 'sortedData' UNTUK PAGINATION (Bukan filteredData lagi)
+  const currentItems = sortedData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
+
+  // Handler untuk mengubah urutan saat Header Score diklik
+  const handleSortToggle = () => {
+    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+  };
+
+  // Reset ke halaman 1 jika filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterJob, filterScore]);
+
+  // --- 4. EXPORT PDF ---
+  const handlePrint = () => {
+    const doc = new jsPDF();
+
+    const title = lang === "id" ? "Laporan Skor Prospek" : "Lead Score Report";
+    doc.text(`${title} - Page ${currentPage}`, 14, 10);
+
+    // Header Tabel PDF sesuai bahasa
+    const tableColumn =
+      lang === "id"
+        ? ["ID", "Nama", "Skor", "Usia", "Pekerjaan", "Kontak Terakhir"]
+        : ["ID", "Name", "Score", "Age", "Job", "Last Contact"];
+
+    const tableRows = [];
+
+    // Gunakan 'sortedData' agar urutan di PDF sesuai tampilan layar
+    sortedData.forEach((lead) => {
+      // Pilih bahasa yang tepat untuk data di PDF
+      const jobDisplay = lang === "id" ? lead.job_id : lead.job;
+      const contactDisplay =
+        lang === "id" ? lead.lastContact_id : lead.lastContact;
+
+      const leadData = [
+        lead.id,
+        lead.name,
+        lead.score,
+        lead.age,
+        jobDisplay,
+        contactDisplay,
+      ];
+      tableRows.push(leadData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+
+    doc.save("lead_score_report.pdf");
+  };
+
+  // --- TRANSLATIONS ---
   const translations = {
     en: {
       title: "Lead Scoring",
-      searchPlaceholder: "Search anything...",
+      searchPlaceholder: "Search ID, name, job...",
       job: "Job",
       score: "Score",
-      print: "Print",
+      print: "Print PDF",
       name: "Name",
       age: "Age",
       lastContact: "Last Contact",
       action: "Action",
       viewDetails: "View Details",
+      // Opsi Job
+      admin: "Admin",
+      bluecollar: "Blue-collar",
+      entrepreneur: "Entrepreneur",
+      housemaid: "Housemaid",
+      manager: "Management",
+      retired: "Retired",
+      selfemployed: "Self-employed",
+      services: "Services",
+      student: "Student",
       technician: "Technician",
-      daysAgo: "days ago",
-      manager: "Manager",
-      designer: "Designer",
-      developer: "Developer",
+      unemployed: "Unemployed",
     },
     id: {
       title: "Skor Prospek",
-      searchPlaceholder: "Cari apa saja...",
+      searchPlaceholder: "Cari ID, nama, pekerjaan...",
       job: "Pekerjaan",
       score: "Skor",
-      print: "Cetak",
+      print: "Cetak PDF",
       name: "Nama",
       age: "Usia",
       lastContact: "Kontak Terakhir",
       action: "Aksi",
       viewDetails: "Lihat Detail",
+      // Opsi Job
+      admin: "Admin",
+      bluecollar: "Buruh",
+      entrepreneur: "Wiraswasta",
+      housemaid: "ART",
+      manager: "Manajemen",
+      retired: "Pensiunan",
+      selfemployed: "Wirausaha",
+      services: "Layanan",
+      student: "Pelajar",
       technician: "Teknisi",
-      daysAgo: "hari lalu",
-      manager: "Manajer",
-      designer: "Desainer",
-      developer: "Pengembang",
+      unemployed: "Pengangguran",
     },
   };
 
   const t = translations[lang];
 
-  // // Mock data untuk tabel
-  // const tableData = [
-  //   {
-  //     name: "John Doe",
-  //     score: 90,
-  //     age: 40,
-  //     job: t.technician,
-  //     lastContact: `2 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Jane Smith",
-  //     score: 85,
-  //     age: 32,
-  //     job: t.designer,
-  //     lastContact: `1 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Michael Bay",
-  //     score: 82,
-  //     age: 45,
-  //     job: t.manager,
-  //     lastContact: `3 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Sarah Lee",
-  //     score: 78,
-  //     age: 29,
-  //     job: t.developer,
-  //     lastContact: `5 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "David Kim",
-  //     score: 75,
-  //     age: 37,
-  //     job: t.technician,
-  //     lastContact: `4 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Emily White",
-  //     score: 70,
-  //     age: 28,
-  //     job: t.designer,
-  //     lastContact: `6 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Chris Evans",
-  //     score: 68,
-  //     age: 42,
-  //     job: t.manager,
-  //     lastContact: `6 ${t.daysAgo}`,
-  //   },
-  //   {
-  //     name: "Anna Scott",
-  //     score: 65,
-  //     age: 33,
-  //     job: t.developer,
-  //     lastContact: `7 ${t.daysAgo}`,
-  //   },
-  // ];
-
-  // Definisi kelas untuk styling
+  // Styling Classes
   const textColorClass =
     theme === "dark" ? "text-darkFontColor" : "text-fontColor";
   const bgColorClass =
@@ -147,25 +222,27 @@ const LeadScorePage = () => {
   const placeholderColor =
     theme === "dark" ? "placeholder-textGrayDark" : "placeholder-textGrayLight";
 
+  if (loading)
+    return (
+      <div className={`min-h-screen p-8 ${bgColorClass} ${textColorClass}`}>
+        Loading data...
+      </div>
+    );
+
   return (
-    // Latar belakang utama (abu-abu/hitam)
     <div
       className={`min-h-screen p-4 transition-colors duration-300 ${bgColorClass} ${textColorClass}`}
     >
-      {/* Kartu konten utama (putih/abu gelap) */}
       <div
         className={`w-full rounded-lg shadow-custom-md border ${tableBorderColor} ${cardBgClass} p-8`}
       >
-        {/* Header: Judul dan Kontrol */}
+        {/* HEADER */}
         <div className="mb-6">
-          {/* Baris 1: Judul */}
           <h1 className="text-3xl font-bold mb-4">{t.title}</h1>
 
-          {/* Baris 2: Kontrol */}
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            {/* Kontrol Kiri: Search & Filter */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-              {/* Search Bar */}
+              {/* SEARCH */}
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                   <svg
@@ -173,7 +250,6 @@ const LeadScorePage = () => {
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
                       strokeLinecap="round"
@@ -186,34 +262,52 @@ const LeadScorePage = () => {
                 <input
                   type="text"
                   placeholder={t.searchPlaceholder}
-                  className={`p-2 pl-10 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`p-2 pl-10 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-60`}
                 />
               </div>
 
-              {/* Dropdown Job (Lebar ditambah) */}
+              {/* FILTER JOB */}
               <select
+                value={filterJob}
+                onChange={(e) => setFilterJob(e.target.value)}
                 className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-40`}
               >
-                <option>{t.job}</option>
-                <option>{t.technician}</option>
-                <option>{t.designer}</option>
-                <option>{t.manager}</option>
-                <option>{t.developer}</option>
+                {/* Value tetap bahasa Inggris agar match dengan backend, tapi label diterjemahkan */}
+                <option value="">{t.job} (All)</option>
+                <option value="Admin.">{t.admin}</option>
+                <option value="Blue-collar">{t.bluecollar}</option>
+                <option value="Entrepreneur">{t.entrepreneur}</option>
+                <option value="Housemaid">{t.housemaid}</option>
+                <option value="Management">{t.manager}</option>
+                <option value="Retired">{t.retired}</option>
+                <option value="Self-employed">{t.selfemployed}</option>
+                <option value="Services">{t.services}</option>
+                <option value="Student">{t.student}</option>
+                <option value="Technician">{t.technician}</option>
+                <option value="Unemployed">{t.unemployed}</option>
               </select>
-              {/* Dropdown Score (Lebar ditambah) */}
+
+              {/* FILTER SCORE */}
               <select
+                value={filterScore}
+                onChange={(e) => setFilterScore(e.target.value)}
                 className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-40`}
               >
-                <option>{t.score}</option>
-                <option>90+</option>
-                <option>80-89</option>
-                <option>70-79</option>
+                <option value="">{t.score} (All)</option>
+                <option value=">70">&gt; 70</option>
+                <option value="40-69">40 - 69</option>
+                <option value="<40">&lt; 40</option>
               </select>
             </div>
 
-            {/* Kontrol Kanan: Print */}
+            {/* PRINT BUTTON */}
             <div>
-              <button className="flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm">
+              <button
+                onClick={handlePrint}
+                className="flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm"
+              >
                 <svg
                   width="16"
                   height="16"
@@ -223,7 +317,6 @@ const LeadScorePage = () => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  xmlns="http://www.w3.org/2000/svg"
                 >
                   <path d="M6 9V2H18V9" />
                   <path d="M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18" />
@@ -235,116 +328,141 @@ const LeadScorePage = () => {
           </div>
         </div>
 
-        {/* Tabel */}
+        {/* TABEL */}
         <section>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-borderColorLight dark:divide-borderColorDark">
               <thead className={tableHeaderBgClass}>
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.name}
                   </th>
+
+                  {/* HEADER SCORE (INTERAKTIF UNTUK SORTING) */}
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
+                    onClick={handleSortToggle}
+                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider cursor-pointer select-none hover:text-primary transition-colors group"
                   >
                     <div className="flex items-center gap-1">
                       {t.score}
-                      {/* Ikon Sortir */}
+                      {/* Ikon Panah yang berputar sesuai sortOrder */}
                       <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          sortOrder === "asc" ? "rotate-180" : ""
+                        }`}
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
                       >
-                        <path d="M8 3V18M8 3L4 7M8 3L12 7M16 21V6M16 21L12 17M16 21L20 17" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
-                  >
+
+                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.age}
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.job}
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.lastContact}
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.action}
                   </th>
                 </tr>
               </thead>
-              <tbody
-                className={`divide-y divide-borderColorLight dark:divide-borderColorDark`}
-              >
-                {tableData.map((lead, index) => (
-                  <tr
-                    key={index}
-                    className={
-                      theme === "dark"
-                        ? "hover:bg-darkSecondary"
-                        : "hover:bg-gray-50"
-                    }
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {lead.score}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.job}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {lead.lastContact}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => router.push(`/nasabah/${index + 20777}`)}
-                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm"
-                      >
-                        {t.viewDetails}
-                      </button>
+              <tbody className="divide-y divide-borderColorLight dark:divide-borderColorDark">
+                {currentItems.length > 0 ? (
+                  currentItems.map((lead, index) => (
+                    <tr
+                      key={lead.id || index}
+                      className={
+                        theme === "dark"
+                          ? "hover:bg-darkSecondary"
+                          : "hover:bg-gray-50"
+                      }
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {lead.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap font-bold">
+                        {/* --- UPDATE WARNA ORANGE --- */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
+                            lead.score >= 70
+                              ? "bg-red-500"
+                              : lead.score >= 40
+                              ? "bg-orange-500" // Menggunakan Orange agar kontras dengan teks putih
+                              : "bg-blue-500"
+                          }`}
+                        >
+                          {lead.score}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {lead.age}
+                      </td>
+
+                      {/* LOGIC: Tampilkan Job sesuai bahasa */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {lang === "id" ? lead.job_id : lead.job}
+                      </td>
+
+                      {/* LOGIC: Tampilkan Bulan sesuai bahasa */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {lang === "id" ? lead.lastContact_id : lead.lastContact}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => router.push(`/nasabah/${lead.id}`)}
+                          className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md hover:brightness-110 text-sm"
+                        >
+                          {t.viewDetails}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="px-6 py-10 text-center text-textGrayLight"
+                    >
+                      {lang === "id" ? "Data tidak ditemukan" : "No data found"}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </section>
 
-        {/* --- AWAL PERUBAHAN PAGINATION --- */}
+        {/* PAGINATION */}
         <section className="flex justify-center items-center mt-6">
           <nav className="flex items-center space-x-2">
-            {/* Tombol Kiri (Baru) */}
-            <a
-              href="#"
-              className="p-2 rounded-md border border-borderColorLight dark:border-borderColorDark text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white transition-colors"
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`p-2 rounded-md border ${tableBorderColor} ${
+                currentPage === 1
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:text-primary dark:hover:text-white"
+              }`}
             >
               <svg
                 className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
               >
                 <path
                   strokeLinecap="round"
@@ -353,51 +471,52 @@ const LeadScorePage = () => {
                   d="M15 19l-7-7 7-7"
                 ></path>
               </svg>
-            </a>
+            </button>
 
-            {/* Halaman 1 (Aktif) */}
-            <a
-              href="#"
-              className="px-3 py-1 rounded-md text-sm font-medium bg-gradient-to-r from-primary to-secondary text-white"
-            >
-              01
-            </a>
-            {/* Halaman 2 (Inaktif) */}
-            <a
-              href="#"
-              className="px-3 py-1 rounded-md text-sm font-medium text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white"
-            >
-              02
-            </a>
-            {/* Halaman 3 (Inaktif) */}
-            <a
-              href="#"
-              className="px-3 py-1 rounded-md text-sm font-medium text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white"
-            >
-              03
-            </a>
-            <span className="text-textGrayLight dark:text-textGrayDark">
-              ...
-            </span>
-            {/* Halaman 6 (Inaktif) */}
-            <a
-              href="#"
-              className="px-3 py-1 rounded-md text-sm font-medium text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white"
-            >
-              06
-            </a>
+            {/* Smart Pagination */}
+            {(() => {
+              let startPage = Math.max(1, currentPage - 2);
+              let endPage = Math.min(totalPages, startPage + 4);
 
-            {/* Tombol Kanan (Baru) */}
-            <a
-              href="#"
-              className="p-2 rounded-md border border-borderColorLight dark:border-borderColorDark text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white transition-colors"
+              if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+              }
+
+              return Array.from(
+                { length: endPage - startPage + 1 },
+                (_, i) => startPage + i
+              ).map((number) => {
+                if (number < 1 || number > totalPages) return null;
+                return (
+                  <button
+                    key={number}
+                    onClick={() => handlePageChange(number)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      currentPage === number
+                        ? "bg-gradient-to-r from-primary to-secondary text-white"
+                        : "text-textGrayLight dark:text-textGrayDark hover:text-primary dark:hover:text-white"
+                    }`}
+                  >
+                    {number}
+                  </button>
+                );
+              });
+            })()}
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className={`p-2 rounded-md border ${tableBorderColor} ${
+                currentPage === totalPages || totalPages === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:text-primary dark:hover:text-white"
+              }`}
             >
               <svg
                 className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
               >
                 <path
                   strokeLinecap="round"
@@ -406,10 +525,9 @@ const LeadScorePage = () => {
                   d="M9 5l7 7-7 7"
                 ></path>
               </svg>
-            </a>
+            </button>
           </nav>
         </section>
-        {/* --- AKHIR PERUBAHAN PAGINATION --- */}
       </div>
     </div>
   );

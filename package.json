@@ -17,6 +17,8 @@
     "d3": "^7.9.0",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.553.0",
     "mysql2": "^3.15.3",
     "next": "16.0.1",
