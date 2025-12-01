@@ -27,7 +27,66 @@ const translations = {
     defaultLoan: "Default Loan",
     date: "Date",
     contact: "Contact",
-    result: "Result"
+    result: "Result",
+    jobValues: {
+      "admin.": "Admin",
+      "blue-collar": "Blue-collar",
+      "entrepreneur": "Entrepreneur",
+      "housemaid": "Housemaid",
+      "management": "Management",
+      "retired": "Retired",
+      "self-employed": "Self-employed",
+      "services": "Services",
+      "student": "Student",
+      "technician": "Technician",
+      "unemployed": "Unemployed",
+      "unknown": "Unknown"
+    },
+    maritalValues: {
+      divorced: "Divorced",
+      married: "Married",
+      single: "Single",
+      unknown: "Unknown"
+    },
+    educationValues: {
+      "basic.4y": "Basic 4y",
+      "basic.6y": "Basic 6y",
+      "basic.9y": "Basic 9y",
+      "high.school": "High School",
+      "illiterate": "Illiterate",
+      "professional.course": "Professional Course",
+      "university.degree": "University Degree",
+      "unknown": "Unknown"
+    },
+    contactValues: {
+      cellular: "Cellular",
+      telephone: "Telephone",
+      unknown: "Unknown"
+    },
+    poutcomeValues: {
+      success: "Success",
+      failure: "Failure",
+      unknown: "Unknown"
+    },
+    potentialValues: {
+      Hot: "Hot",
+      Warm: "Warm",
+      Cold: "Cold"
+    },
+    monthValues: {
+      jan: "January",
+      feb: "February",
+      mar: "March",
+      apr: "April",
+      may: "May",
+      jun: "June",
+      jul: "July",
+      aug: "August",
+      sep: "September",
+      oct: "October",
+      nov: "November",
+      dec: "December"
+    }
   },
   id: {
     leadDetails: "Detail Prospek",
@@ -49,9 +108,74 @@ const translations = {
     defaultLoan: "Pinjaman Default",
     date: "Tanggal",
     contact: "Kontak",
-    result: "Hasil"
+    result: "Hasil",
+    jobValues: {
+      "admin.": "Admin",
+      "blue-collar": "Buruh",
+      "entrepreneur": "Wiraswasta",
+      "housemaid": "Pekerja Rumah Tangga",
+      "management": "Manajemen",
+      "retired": "Pensiunan",
+      "self-employed": "Pekerja Lepas",
+      "services": "Jasa",
+      "student": "Mahasiswa",
+      "technician": "Teknisi",
+      "unemployed": "Pengangguran",
+      "unknown": "Tidak Diketahui"
+    },
+    maritalValues: {
+      divorced: "Cerai",
+      married: "Menikah",
+      single: "Belum Menikah",
+      unknown: "Tidak Diketahui"
+    },
+    educationValues: {
+      "basic.4y": "Dasar 4 Tahun",
+      "basic.6y": "Dasar 6 Tahun",
+      "basic.9y": "Dasar 9 Tahun",
+      "high.school": "Sekolah Menengah",
+      "illiterate": "Tidak Melek Huruf",
+      "professional.course": "Kursus Profesional",
+      "university.degree": "Sarjana",
+      "unknown": "Tidak Diketahui"
+    },
+    contactValues: {
+      cellular: "Seluler",
+      telephone: "Telepon",
+      unknown: "Tidak Diketahui"
+    },
+    poutcomeValues: {
+      success: "Berhasil",
+      failure: "Gagal",
+      unknown: "Tidak Diketahui"
+    },
+    potentialValues: {
+    Hot: "Panas",
+    Warm: "Hangat",
+    Cold: "Dingin"
+    },
+    monthValues: {
+      jan: "Januari",
+      feb: "Februari",
+      mar: "Maret",
+      apr: "April",
+      may: "Mei",
+      jun: "Juni",
+      jul: "Juli",
+      aug: "Agustus",
+      sep: "September",
+      oct: "Oktober",
+      nov: "November",
+      dec: "Desember"
+    }
   }
 };
+
+// Helper function untuk ambil value sesuai bahasa
+function translateField(fieldType, value, lang) {
+  if (!value) return "-";
+  return translations[lang]?.[`${fieldType}Values`]?.[value] ?? value;
+}
 
 export default function NasabahDetailPage({ params: paramsPromise }) {
   const { theme } = useTheme();
@@ -62,7 +186,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
   const [loading, setLoading] = useState(true);
   const [id, setId] = useState(null);
 
-  // Tunggu params resolve
+  // Ambil params dari promise dan simpan ID kalo ada
   useEffect(() => {
     async function getParams() {
       const params = await paramsPromise;
@@ -71,20 +195,25 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
     getParams();
   }, [paramsPromise]);
 
-  // Fetch data setelah ID siap
+  // Ambil data nasabah berdasarkan ID yang ada, tangani error dan ubah status loading
   useEffect(() => {
     if (!id) return;
     async function fetchData() {
       try {
-        const res = await fetch(`/api/lead/${id}`);
+        const res = await fetch(`/api/lead/${id}`, { cache: "no-store" }); 
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const data = await res.json();
         setNasabah(data);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setNasabah(null);
       } finally {
         setLoading(false);
       }
     }
+
     fetchData();
   }, [id]);
 
@@ -153,12 +282,14 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${nasabah.id}`} alt="Lead" className="w-32 h-32 rounded-full border-4 border-green-100" />
                   </div>
                   <div className="text-center mb-2">
-                    <h2 className={`text-xl font-semibold ${textMain}`}>{nasabah.id}</h2>
+                    <h2 className={`text-xl font-semibold ${textMain}`}>
+                      {nasabah.personalInfo?.name ?? `Lead ${nasabah.id}`}
+                    </h2>
                   </div>
                   <div className={`flex flex-col items-center text-center gap-2 ${textSecondary} text-sm mb-6 pb-6 border-b ${borderColor}`}>
                     <div className="flex items-center gap-2">
                       <Clock size={16} />
-                      <span>{t.lastContact}: {nasabah.campaignInfo?.month ? capitalize(nasabah.campaignInfo.month) : ""}</span>
+                      <span>{t.lastContact}: {nasabah?.campaignInfo?.month ? translateField("month", nasabah.campaignInfo.month, lang) : "-"}</span>
                     </div>
                     <h3 className={`font-semibold ${textMain} text-sm uppercase tracking-wide mt-6`}>
                       {t.leadsInfo}
@@ -172,16 +303,20 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                     <div>
                       <p className={`${textSecondary} text-sm mb-1`}>{t.job}</p>
                       <p className={`${textMain} font-medium capitalize`}>
-                        {nasabah.personalInfo?.job?.replace(/\.$/, "")}
+                        {translateField("job", nasabah.personalInfo?.job?.replace(/\.$/, ""), lang)}
                       </p>
                     </div>
                     <div>
                       <p className={`${textSecondary} text-sm mb-1`}>{t.maritalStatus}</p>
-                      <p className={`${textMain} font-medium capitalize`}>{nasabah.personalInfo?.marital}</p>
+                      <p className={`${textMain} font-medium capitalize`}>
+                        {translateField("marital", nasabah.personalInfo?.marital, lang)}
+                      </p>
                     </div>
                     <div>
                       <p className={`${textSecondary} text-sm mb-1`}>{t.education}</p>
-                      <p className={`${textMain} font-medium capitalize`}>{nasabah.personalInfo?.education?.replace(/\./g, ' ')}</p>
+                      <p className={`${textMain} font-medium capitalize`}>
+                        {translateField("education", nasabah.personalInfo?.education, lang)}
+                      </p>
                     </div>
                   </div>
                 </>
@@ -219,19 +354,19 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {/* Last Campaign */}
-                <div className={`rounded-xl shadow-custom-sm border ${borderColor} p-4 ${bgCard}`}>
-                  <p className={`${textSecondary} text-sm mb-2`}>{t.lastCampaign}</p>
-                  <p className={`text-2xl font-semibold ${getPoutcomeColor(nasabah?.campaignInfo?.poutcome)}`}>
-                    {capitalize(nasabah?.campaignInfo?.poutcome)}
-                  </p>
-                </div>
+              {/* Last Campaign */}
+              <div className={`rounded-xl shadow-custom-sm border ${borderColor} p-4 ${bgCard}`}>
+                <p className={`${textSecondary} text-sm mb-2`}>{t.lastCampaign}</p>
+                <p className={`text-2xl font-semibold ${getPoutcomeColor(nasabah?.campaignInfo?.poutcome)}`}>
+                  {translateField("poutcome", nasabah?.campaignInfo?.poutcome, lang)}
+                </p>
+              </div>
 
                 {/* Lead Potentials */}
                 <div className={`rounded-xl shadow-custom-sm border ${borderColor} p-4 ${bgCard}`}>
                   <p className={`${textSecondary} text-sm mb-2`}>{t.leadPotentials}</p>
                   <p className={`text-2xl font-semibold ${getPotentialColor(leadPotential)}`}>
-                    {leadPotential}
+                    {translateField("potential", leadPotential, lang)}
                   </p>
                 </div>
               </div>
@@ -265,15 +400,19 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                   </thead>
                   <tbody>
                     <tr className={`border-b ${borderColor} ${hoverBg}`}>
-                      <td className={`px-4 py-4 text-sm ${textMain}`}>{nasabah ? capitalize(nasabah.campaignInfo.month) : "-"}</td>
-                      <td className={`px-4 py-4 text-sm ${textMain}`}>{capitalize(nasabah?.campaignInfo?.contact)}</td>
+                      <td className={`px-4 py-4 text-sm ${textMain}`}>
+                        {nasabah ? translateField("month", nasabah.campaignInfo.month, lang) : "-"}
+                      </td>
+                      <td className={`px-4 py-4 text-sm ${textMain}`}>
+                        {nasabah ? translateField("contact", nasabah.campaignInfo.contact, lang) : "-"}
+                      </td>
                       <td className="px-4 py-4">
                         <span className={`inline-block px-3 py-1 text-xs font-medium rounded-xl ${
                           nasabah?.campaignInfo?.poutcome === "success" ? "bg-green-100 text-green-700"
                           : nasabah?.campaignInfo?.poutcome === "unknown" ? "bg-yellow-100 text-yellow-700"
                           : "bg-red-100 text-red-700"
                         }`}>
-                          {capitalize(nasabah?.campaignInfo?.poutcome)}
+                          {translateField("poutcome", nasabah?.campaignInfo?.poutcome, lang)}
                         </span>
                       </td>
                     </tr>

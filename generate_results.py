@@ -1,6 +1,10 @@
 import pandas as pd
 import joblib
 import json
+from faker import Faker
+
+# Faker Indonesia
+fake = Faker("id_ID")
 
 # 1. Load Model & Data
 model = joblib.load("model_xgb_tuned.pkl") 
@@ -16,13 +20,17 @@ proba_yes_array = model.predict_proba(df)[:, 1]
 results = []
 
 for i, row in df.iterrows():
-
     probability_score = proba_yes_array[i]
 
-    # Jika peluang >= 0.3, masukkan sebagai nasabah potensial
     if probability_score >= THRESHOLD:
+
+        # Nama selalu konsisten berdasarkan ID
+        fake.seed_instance(i)  
+        random_name = fake.name()
+
         results.append({
-            "id": i,
+            "id": i,  # tetap untuk primary key
+            "name": random_name,  # nama faker yang konsisten
             "age": int(row['age']),
             "job": row['job'],
             "marital": row['marital'],
@@ -51,4 +59,4 @@ output_path = "public/prediction_results.json"
 with open(output_path, "w") as f:
     json.dump(results, f, indent=2)
 
-print(f"Selesai! {len(results)} nasabah potensial (score >= {THRESHOLD*100}%) disimpan ke {output_path}")
+print(f"Selesai! {len(results)} nasabah potensial disimpan ke {output_path}")

@@ -57,7 +57,7 @@ export async function POST(request) {
       },
     });
 
-    // Set cookie HttpOnly (aman)
+    // Set cookie HttpOnly 
     response.cookies.set({
       name: "auth_token",
       value: token,

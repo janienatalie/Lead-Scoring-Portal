@@ -7,7 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { logoutUser } from "../app/lib/auth"; // <-- Path ini mungkin perlu disesuaikan
+import { logoutUser } from "../app/lib/auth";
 
 const Sidebar = () => {
   const { theme, setTheme } = useTheme();
@@ -26,7 +26,6 @@ const Sidebar = () => {
       indonesian: "Indonesian",
       english: "English",
       mainMenu: "MAIN MENU",
-      // --- TAMBAHAN ---
       logoutConfirm: "Are you sure you want to log out?",
     },
     id: {
@@ -39,7 +38,6 @@ const Sidebar = () => {
       indonesian: "Indonesia",
       english: "Inggris",
       mainMenu: "MENU UTAMA",
-      // --- TAMBAHAN ---
       logoutConfirm: "Apakah Anda yakin ingin keluar?",
     },
   };
@@ -50,8 +48,7 @@ const Sidebar = () => {
     setTheme(newTheme);
   };
 
-  // --- FUNGSI HANDLE LOGOUT DIPERBARUI ---
-  // Tambahkan 'async' di sini
+  // Fungsi Logout 
   const handleLogout = async () => {
     // 1. Konfirmasi
     const isConfirmed = window.confirm(t.logoutConfirm);
@@ -61,11 +58,10 @@ const Sidebar = () => {
         // 2. Hapus cookie di server
         await logoutUser();
 
-        // 3. Hapus data user di localStorage (TAPI JANGAN HAPUS "theme")
+        // 3. Hapus data user di localStorage
         localStorage.removeItem("user_info");
 
-        // 4. SOLUSI UTAMA: Gunakan Hard Reload
-        // Ini memaksa browser refresh, sehingga ThemeContext membaca ulang localStorage
+        // kembali ke halaman utama
         window.location.href = "/";
       } catch (error) {
         console.error("Logout error", error);
@@ -87,7 +83,7 @@ const Sidebar = () => {
     >
       {/* Top Section: Logo and Main Menu */}
       <div>
-        {/* Logo (Menggunakan 2 versi) */}
+        {/* Logo ada 2 versi */}
         <div className="flex items-center mb-10 pl-2">
           <Image
             src={theme === "dark" ? "/Logo-dark.png" : "/Logo-light.png"}
@@ -105,7 +101,6 @@ const Sidebar = () => {
             {t.mainMenu}
           </h3>
           <ul>
-            {/* ... (Link Dashboard & Lead Score tidak berubah) ... */}
             <li className="mb-2">
               <Link
                 href="/dashboard"
@@ -187,7 +182,7 @@ const Sidebar = () => {
         </h3>
 
         <ul className="mb-6">
-          {/* Tombol Logout (tidak berubah, tapi fungsinya sudah diupdate) */}
+          {/* Tombol Logout */}
           <li className="mb-3">
             <button
               onClick={handleLogout}
@@ -233,12 +228,12 @@ const Sidebar = () => {
           </li>
         </ul>
 
-        {/* Theme Toggle (Tidak berubah) */}
+        {/* Theme Toggle */}
         <div
           className={`p-1 rounded-full flex relative transition-colors duration-300
           ${
             theme === "dark"
-              ? "bg-darkSecondary" // Latar belakang abu gelap
+              ? "bg-darkSecondary" 
               : "bg-gray-200"
           }
         `}
@@ -259,8 +254,8 @@ const Sidebar = () => {
               flex items-center justify-center space-x-1
               ${
                 theme === "light"
-                  ? "text-white" // Aktif (di atas gradasi)
-                  : "text-textGrayDark hover:text-white" // Inaktif (di atas bg-darkSecondary)
+                  ? "text-white" 
+                  : "text-textGrayDark hover:text-white"
               }
             `}
           >
@@ -344,8 +339,8 @@ const Sidebar = () => {
               flex items-center justify-center space-x-1
               ${
                 theme === "dark"
-                  ? "text-white" // Aktif (di atas gradasi)
-                  : "text-textGrayDark hover:text-black" // Inaktif (di atas bg-gray-200)
+                  ? "text-white"
+                  : "text-textGrayDark hover:text-black" 
               }
             `}
           >

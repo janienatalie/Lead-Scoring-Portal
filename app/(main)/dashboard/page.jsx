@@ -17,11 +17,11 @@ const ResponsivePie = dynamic(
   { ssr: false }
 );
 
-
 const DashboardPage = () => {
   const { theme } = useTheme();
   const { lang } = useLanguage();
 
+  // Mapping untuk perubahan bahasa
   const translations = {
     en: {
       welcome: "Welcome Back, Kireisha!",
@@ -47,6 +47,25 @@ const DashboardPage = () => {
       converted: "Converted",
       jobDistribution: "Job Distribution",
       others: "Others",
+      jobMapping: {
+        "admin": "Admin",
+        "blue-collar": "Blue-collar",
+        entrepreneur: "Entrepreneur",
+        housemaid: "Housemaid",
+        management: "Management",
+        retired: "Retired",
+        "self-employed": "Self-employed",
+        services: "Services",
+        student: "Student",
+        technician: "Technician",
+        unemployed: "Unemployed",
+        unknown: "Unknown",
+      },
+      statusMapping: {
+        contacted: "Contacted",
+        new: "New",
+        converted: "Converted",
+      }
     },
     id: {
       welcome: "Selamat Datang Kembali, Kireisha!",
@@ -72,6 +91,56 @@ const DashboardPage = () => {
       converted: "Dikonversi",
       others: "Lainnya",
       jobDistributionId: "Distribusi Pekerjaan",
+      jobMapping: {
+        "admin": "Admin",
+        "blue-collar": "Buruh",
+        entrepreneur: "Wiraswasta",
+        housemaid: "Pekerja Rumah Tangga",
+        management: "Manajemen",
+        retired: "Pensiunan",
+        "self-employed": "Pekerja Lepas",
+        services: "Jasa",
+        student: "Mahasiswa",
+        technician: "Teknisi",
+        unemployed: "Pengangguran",
+        unknown: "Tidak Diketahui",
+      },
+      statusMapping: {
+        contacted: "Dihubungi",
+        new: "Baru",
+        converted: "Dikonversi",
+      }
+    },
+  };
+
+  const monthMapping = {
+    en: {
+      jan: "January",
+      feb: "February",
+      mar: "March",
+      apr: "April",
+      may: "May",
+      jun: "June",
+      jul: "July",
+      aug: "August",
+      sep: "September",
+      oct: "October",
+      nov: "November",
+      dec: "December",
+    },
+    id: {
+      jan: "Januari",
+      feb: "Februari",
+      mar: "Maret",
+      apr: "April",
+      may: "Mei",
+      jun: "Juni",
+      jul: "Juli",
+      aug: "Agustus",
+      sep: "September",
+      oct: "Oktober",
+      nov: "November",
+      dec: "Desember",
     },
   };
 
@@ -79,31 +148,39 @@ const DashboardPage = () => {
 
   const t = translations[lang];
 
-  // State untuk data dashboard
+  // Data dashboard: grafik garis, tabel prospek, dan statistik utama
   const [lineData, setLineData] = useState([]);
   const [tableData, setTableData] = useState([]);
-  // State untuk stats
   const [totalLeads, setTotalLeads] = useState(0);
-  // Tambahkan state
   const [highPotentialLeads, setHighPotentialLeads] = useState(0);
   const [averageLeadScore, setAverageLeadScore] = useState(0);
   const [jobData, setJobLineData] = useState([]);
 
-  // Di useEffect setelah fetch
+  // Ambil data dashboard dari API 
   useEffect(() => {
     fetch("/api/dashboard")
       .then((res) => res.json())
       .then((data) => {
         setLineData(data.lineData);
         setTableData(data.tableData);
-        setTotalLeads(data.totalLeads);           // total leads
-        setHighPotentialLeads(data.highPotentialLeads); // high potential leads
+        setTotalLeads(data.totalLeads);      
+        setHighPotentialLeads(data.highPotentialLeads); 
         setAverageLeadScore(data.averageLeadScore);
-        setJobLineData(data.jobData);     // average lead score
+        setJobLineData(data.jobData);   
       })
       .catch((err) => console.error("Error fetching dashboard data:", err));
   }, []);
 
+  // State menyimpan data user
+  const [user, setUser] = useState({ username: "", email: "" });
+
+  // Ambil data user login dari API user
+  useEffect(() => {
+    fetch("/api/users")
+      .then(res => res.json())
+      .then(data => setUser(data))
+      .catch(err => console.error("Error fetching user:", err));
+  }, []);
 
   // Styling kelas
   const textColorClass =
@@ -124,7 +201,12 @@ const DashboardPage = () => {
         className={`w-full rounded-xl shadow-custom-md border ${tableBorderColor} ${cardBgClass} p-8`}
       >
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-1">{t.welcome}</h1>
+          <h1 className="text-3xl font-bold mb-1">
+  {lang === "id" 
+    ? `Selamat Datang Kembali, ${user.username || "Loading..."}!` 
+    : `Welcome Back, ${user.username || "Loading..."}!`}
+</h1>
+
             <p className="text-sm ext-textGrayLight dark:text-darkFontColor">
               {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
                 weekday: "long",
@@ -203,7 +285,7 @@ const DashboardPage = () => {
                   theme={{
                     axis: {
                       domain: {
-                        line: { stroke: theme === "dark" ? "#888" : "#555" } // garis sumbu
+                        line: { stroke: theme === "dark" ? "#888" : "#555" } 
                       },
                       ticks: {
                         line: { stroke: theme === "dark" ? "#888" : "#555" },
@@ -212,23 +294,18 @@ const DashboardPage = () => {
                     },
                     grid: {
                       line: {
-                        stroke: theme === "dark" ? "#666" : "#ccc", // grid lebih kontras
+                        stroke: theme === "dark" ? "#666" : "#ccc", 
                         strokeWidth: 1
                       }
                     },
                     labels: { text: { fill: theme === "dark" ? "#E5E5E5" : "#333" } },
-                    
-                    // >>> INI ADALAH PENYESUAIAN UNTUK GARIS CROSSHAIR/TOOLTIP INTERAKTIF
                     crosshair: {
                       line: {
-                        // Menggunakan warna terang di mode gelap (dark) agar terlihat kontras
                         stroke: theme === "dark" ? "#F0F0F0" : "#777",
                         strokeWidth: 1,
-                        strokeDasharray: "6 6" // Memastikan garisnya putus-putus
+                        strokeDasharray: "6 6"
                       }
                     },
-                    // <<< AKHIR PENYESUAIAN CROSSHAIR
-                    
                     tooltip: {
                       container: {
                         background: theme === "dark" ? "#1E2D26" : "#fff",
@@ -256,7 +333,7 @@ const DashboardPage = () => {
                     label: j.label,
                     value: j.value,
                   }))}
-                  margin={{ top: 20, right: 20, bottom: 60, left: 20 }} // bawah lebih untuk legend
+                  margin={{ top: 20, right: 20, bottom: 60, left: 20 }} 
                   innerRadius={0.5}
                   padAngle={1}
                   cornerRadius={5}
@@ -277,7 +354,7 @@ const DashboardPage = () => {
                       direction: 'row',
                       justify: false,
                       translateX: 0,
-                      translateY: 40, // jarak legend dari chart
+                      translateY: 40, 
                       itemsSpacing: 10,
                       itemWidth: 100,
                       itemHeight: 20,
@@ -326,8 +403,10 @@ const DashboardPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">{lead.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{lead.score}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.job}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.lastContact}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{t.jobMapping[lead.job] || lead.job}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {monthMapping[lang][lead.lastContact.toLowerCase()] || lead.lastContact}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => router.push(`/nasabah/${lead.id || 20777}`)}

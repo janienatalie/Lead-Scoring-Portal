@@ -12,7 +12,7 @@ const Navbar = () => {
   const [user, setUser] = useState({ username: "", email: "" });
 
   useEffect(() => {
-    fetch("/api/users") // pastikan endpoint ini sesuai route GET
+    fetch("/api/users") 
       .then((res) => res.json())
       .then((data) => setUser(data))
       .catch((err) => console.error(err));

@@ -245,15 +245,12 @@ const LoginPage = () => {
       </div>
 
       {/* --- AWAL PERUBAHAN --- */}
-      {/* Kolom Kanan: Ilustrasi (Ubah w-1/2 menjadi w-7/12 dan hapus flex-1) */}
-      {/* Container luar ini (dengan p-4) BUKAN gradasi */}
       <div
         className={`w-1/2 hidden flex-1 md:flex items-center justify-center p-4 ${cardBgClass} transition-colors duration-300`}
       >
-        {/* Container dalam ini yang memiliki gradasi dan rounded */}
         <div className="w-full h-full bg-gradient-to-r from-primary to-secondary rounded-3xl flex items-center justify-center p-12">
           <Image
-            src="/login.png" // Ganti dengan nama file PNG Anda
+            src="/login.png" 
             width={800}
             height={800}
             alt="Login Illustration"

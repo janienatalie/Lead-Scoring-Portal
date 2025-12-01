@@ -149,7 +149,7 @@ const LeadScorePage = () => {
     doc.save("lead_score_report.pdf");
   };
 
-  // --- TRANSLATIONS ---
+  // Mapping untuk perubahan bahasa
   const translations = {
     en: {
       title: "Lead Scoring",
@@ -274,7 +274,6 @@ const LeadScorePage = () => {
                 onChange={(e) => setFilterJob(e.target.value)}
                 className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-40`}
               >
-                {/* Value tetap bahasa Inggris agar match dengan backend, tapi label diterjemahkan */}
                 <option value="">{t.job} (All)</option>
                 <option value="Admin.">{t.admin}</option>
                 <option value="Blue-collar">{t.bluecollar}</option>
@@ -337,8 +336,6 @@ const LeadScorePage = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
                     {t.name}
                   </th>
-
-                  {/* HEADER SCORE (INTERAKTIF UNTUK SORTING) */}
                   <th
                     scope="col"
                     onClick={handleSortToggle}
@@ -346,7 +343,6 @@ const LeadScorePage = () => {
                   >
                     <div className="flex items-center gap-1">
                       {t.score}
-                      {/* Ikon Panah yang berputar sesuai sortOrder */}
                       <svg
                         className={`w-4 h-4 transition-transform duration-200 ${
                           sortOrder === "asc" ? "rotate-180" : ""
@@ -394,13 +390,12 @@ const LeadScorePage = () => {
                         {lead.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-bold">
-                        {/* --- UPDATE WARNA ORANGE --- */}
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
                             lead.score >= 70
                               ? "bg-red-500"
                               : lead.score >= 40
-                              ? "bg-orange-500" // Menggunakan Orange agar kontras dengan teks putih
+                              ? "bg-orange-500"
                               : "bg-blue-500"
                           }`}
                         >
@@ -410,13 +405,11 @@ const LeadScorePage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {lead.age}
                       </td>
-
-                      {/* LOGIC: Tampilkan Job sesuai bahasa */}
+                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         {lang === "id" ? lead.job_id : lead.job}
                       </td>
 
-                      {/* LOGIC: Tampilkan Bulan sesuai bahasa */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {lang === "id" ? lead.lastContact_id : lead.lastContact}
                       </td>
