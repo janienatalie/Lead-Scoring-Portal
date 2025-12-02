@@ -16,7 +16,8 @@ export async function GET(req) {
     .slice(0, 5)
     .map((lead) => ({
       id: lead.id,
-      name: lead.name, 
+      name: lead.name,
+      leadScore: lead.leadScore, 
       age: lead.age,
       job: lead.job.replace(/\./g, ""), 
       lastContact: lead.month?.toLowerCase() || "-", 

@@ -3,7 +3,7 @@ import data from "../../../public/prediction_results.json";
 import { lineData, pieData } from "../../lib/data/dashboard";
 
 export async function GET(req) {
-  // --- Mapping bulan ---
+  
   const monthMapEn = {
     jan: "January",
     feb: "February",

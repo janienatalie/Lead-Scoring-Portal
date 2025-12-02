@@ -161,6 +161,7 @@ const DashboardPage = () => {
     fetch("/api/dashboard")
       .then((res) => res.json())
       .then((data) => {
+        console.log("DATA DASHBOARD:", data);
         setLineData(data.lineData);
         setTableData(data.tableData);
         setTotalLeads(data.totalLeads);      
@@ -202,10 +203,10 @@ const DashboardPage = () => {
       >
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-1">
-  {lang === "id" 
-    ? `Selamat Datang Kembali, ${user.username || "Loading..."}!` 
-    : `Welcome Back, ${user.username || "Loading..."}!`}
-</h1>
+            {lang === "id" 
+              ? `Selamat Datang Kembali, ${user.username || "Loading..."}!` 
+              : `Welcome Back, ${user.username || "Loading..."}!`}
+          </h1>
 
             <p className="text-sm ext-textGrayLight dark:text-darkFontColor">
               {new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
@@ -401,7 +402,19 @@ const DashboardPage = () => {
                 {tableData.map((lead, index) => (
                   <tr key={index} className={theme === "dark" ? "hover:bg-darkSecondary" : "hover:bg-gray-50"}>
                     <td className="px-6 py-4 whitespace-nowrap">{lead.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.score}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-bold">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
+                            lead.leadScore >= 70
+                              ? "bg-red-500"
+                              : lead.leadScore >= 40
+                              ? "bg-orange-500"
+                              : "bg-blue-500"
+                          }`}
+                        >
+                          {lead.leadScore}
+                        </span>
+                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{t.jobMapping[lead.job] || lead.job}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
