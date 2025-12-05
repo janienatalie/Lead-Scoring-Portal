@@ -30,7 +30,7 @@ for i, row in df.iterrows():
 
         results.append({
             "id": i,  # tetap untuk primary key
-            "name": random_name,  # nama faker yang konsisten
+            "name": random_name,  
             "age": int(row['age']),
             "job": row['job'],
             "marital": row['marital'],

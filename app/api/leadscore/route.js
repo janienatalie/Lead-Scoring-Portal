@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import data from "../../../public/prediction_results.json";
-import { lineData, pieData } from "../../lib/data/dashboard";
+import { lineData } from "../../lib/data/dashboard";
+import db from "../../lib/db";
 
 export async function GET(req) {
+  // Ambil semua status/result dari DB
+  const [statusRows] = await db.execute("SELECT id, status FROM lead_status");
+  const [resultRows] = await db.execute("SELECT id, results FROM lead_results");
+
+  const statusMap = {};
+  statusRows.forEach(r => (statusMap[r.id] = r.status));
+
+  const resultMap = {};
+  resultRows.forEach(r => (resultMap[r.id] = r.results));
   
   const monthMapEn = {
     jan: "January",
@@ -50,20 +60,20 @@ export async function GET(req) {
   };
 
   // --- Olah data ---
-  const tableData = data
-    .map((lead) => ({
-      ...lead,
-      score: Math.round(lead.confidence), // skor tetap ada
-      name: lead.name, // ambil langsung dari JSON
-      age: lead.age,
-      job: lead.job ? lead.job.charAt(0).toUpperCase() + lead.job.slice(1) : "",
-      job_id: lead.job ? jobMapId[lead.job.toLowerCase()] || lead.job : "",
-      lastContact: lead.month ? monthMapEn[lead.month.toLowerCase()] || lead.month : "",
-      lastContact_id: lead.month
-        ? monthMapId[lead.month.toLowerCase()] || monthMapEn[lead.month.toLowerCase()] || lead.month
-        : "",
-    }))
-    .sort((a, b) => b.leadScore - a.leadScore);
+  const tableData = data.map(lead => ({
+    ...lead,
+    score: Math.round(lead.confidence),
+    name: lead.name,
+    age: lead.age,
+    job: lead.job ? lead.job.charAt(0).toUpperCase() + lead.job.slice(1) : "",
+    job_id: lead.job ? jobMapId[lead.job.toLowerCase()] || lead.job : "",
+    lastContact: lead.month ? monthMapEn[lead.month.toLowerCase()] || lead.month : "",
+    lastContact_id: lead.month
+      ? monthMapId[lead.month.toLowerCase()] || monthMapEn[lead.month.toLowerCase()] || lead.month
+      : "",
+    status: statusMap[lead.id] || "unknown",
+    result: resultMap[lead.id] || "interested",
+  }));
 
   // --- Statistik utama ---
   const totalLeads = data.length;
@@ -77,7 +87,41 @@ export async function GET(req) {
     totalLeads,
     highPotentialLeads,
     averageLeadScore,
-    lineData,
-    pieData,
+    lineData
   });
+}
+
+export async function POST(req) {
+  try {
+    const { id, status, result } = await req.json();
+
+    if (!id) {
+      return NextResponse.json({ error: "ID lead wajib ada" }, { status: 400 });
+    }
+
+    // Update status jika ada
+    if (status !== undefined) {
+      await db.execute(
+        `INSERT INTO lead_status (id, status)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE status = VALUES(status)`,
+        [id, status] // ✅ array, bukan object
+      );
+    }
+
+    // Update result jika ada
+    if (result !== undefined) {
+      await db.execute(
+        `INSERT INTO lead_results (id, results)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE results = VALUES(results)`,
+        [id, result] // ✅ array
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("UPDATE DASHBOARD ERROR:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

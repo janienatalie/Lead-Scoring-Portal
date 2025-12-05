@@ -30,7 +30,6 @@ const DashboardPage = () => {
       highPotentialLeads: "High Potential Leads",
       conversionRate: "Conversion Rate",
       averageLeadScore: "Average Lead Score",
-      vsLastMonth: "vs last month",
       leadScoreDistribution: "Lead Score Distribution",
       leadStageConversion: "Lead Stage Conversion",
       months: "months",
@@ -41,8 +40,17 @@ const DashboardPage = () => {
       job: "Job",
       lastContact: "Last Contact",
       action: "Action",
+      status:"Status",
       viewDetails: "View Details",
-      contacted: "Contacted",
+      statusOptions: {
+        contacted: "Contacted",
+        notContacted: "Not Contacted",
+        attemptedContacted: "Attempted Contacted",
+        interested: "Interested",
+        notInterested: "Not Interested",
+        followUp: "Follow Up",
+      },
+      results: "Results",
       new: "New",
       converted: "Converted",
       jobDistribution: "Job Distribution",
@@ -74,7 +82,6 @@ const DashboardPage = () => {
       highPotentialLeads: "Prospek Potensial Tinggi",
       conversionRate: "Tingkat Konversi",
       averageLeadScore: "Skor Prospek Rata-rata",
-      vsLastMonth: "dibanding bulan lalu",
       leadScoreDistribution: "Distribusi Skor Prospek",
       leadStageConversion: "Konversi Tahap Prospek",
       months: "bulan",
@@ -84,9 +91,18 @@ const DashboardPage = () => {
       age: "Usia",
       job: "Pekerjaan",
       lastContact: "Kontak Terakhir",
+      status:"Status",
       action: "Aksi",
       viewDetails: "Lihat Detail",
-      contacted: "Dihubungi",
+      statusOptions: {
+        contacted: "Dihubungi",
+        notContacted: "Belum Dihubungi",
+        attemptedContacted: "Coba Dihubungi",
+        interested: "Tertarik",
+        notInterested: "Tidak Tertarik",
+        followUp: "Tindak Lanjut",
+      },
+      results: "Hasil",
       new: "Baru",
       converted: "Dikonversi",
       others: "Lainnya",
@@ -155,22 +171,40 @@ const DashboardPage = () => {
   const [highPotentialLeads, setHighPotentialLeads] = useState(0);
   const [averageLeadScore, setAverageLeadScore] = useState(0);
   const [jobData, setJobLineData] = useState([]);
+  const [leadStatuses, setLeadStatuses] = useState({});
+  const [leadResults, setLeadResults] = useState({});
 
   // Ambil data dashboard dari API 
-  useEffect(() => {
-    fetch("/api/dashboard")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("DATA DASHBOARD:", data);
-        setLineData(data.lineData);
-        setTableData(data.tableData);
-        setTotalLeads(data.totalLeads);      
-        setHighPotentialLeads(data.highPotentialLeads); 
-        setAverageLeadScore(data.averageLeadScore);
-        setJobLineData(data.jobData);   
-      })
-      .catch((err) => console.error("Error fetching dashboard data:", err));
-  }, []);
+useEffect(() => {
+  fetch("/api/dashboard")
+    .then((res) => res.json())
+    .then((data) => {
+      setLineData(data.lineData);
+      setTableData(data.tableData);
+      setTotalLeads(data.totalLeads);
+      setHighPotentialLeads(data.highPotentialLeads);
+      setAverageLeadScore(data.averageLeadScore);
+      setJobLineData(data.jobData);
+
+      // -----------------------------
+      // Status
+      const statuses = {};
+      data.tableData.forEach(lead => {
+        statuses[lead.id] = lead.status || "unknown";
+      });
+      setLeadStatuses(statuses);
+
+      // -----------------------------
+      // Results
+      const results = {};
+      data.tableData.forEach(lead => {
+        results[lead.id] = lead.result || "unknown"; // pastikan API juga mengirim field result
+      });
+      setLeadResults(results);
+    })
+    .catch((err) => console.error("Error fetching dashboard data:", err));
+}, []);
+
 
   // State menyimpan data user
   const [user, setUser] = useState({ username: "", email: "" });
@@ -183,6 +217,45 @@ const DashboardPage = () => {
       .catch(err => console.error("Error fetching user:", err));
   }, []);
 
+  const updateStatus = async (leadId, newStatus) => {
+    try {
+      const res = await fetch(`/api/dashboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId, status: newStatus }), 
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      // Update UI tanpa reload
+      setLeadStatuses(prev => ({
+        ...prev,
+        [leadId]: newStatus,
+      }));
+
+    } catch (err) {
+      console.error("Error updating status:", err);
+    }
+  };
+
+  const updateResult = async (leadId, newResult) => {
+    try {
+      // Update UI dulu
+      setLeadResults(prev => ({ ...prev, [leadId]: newResult }));
+
+      // Kirim ke backend
+      await fetch("/api/dashboard", {
+        method: "POST", // atau PATCH sesuai endpoint
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId, result: newResult }),
+      });
+    } catch (err) {
+      console.error("Error updating result:", err);
+    }
+  };
+
   // Styling kelas
   const textColorClass =
     theme === "dark" ? "text-darkFontColor" : "text-fontColor";
@@ -193,6 +266,26 @@ const DashboardPage = () => {
     theme === "dark" ? "bg-darkSecondary" : "bg-gray-50";
   const tableBorderColor =
     theme === "dark" ? "border-borderColorDark" : "border-borderColorLight";
+
+  const scrollbarStyle = `
+    .table-scroll-container::-webkit-scrollbar {
+      height: 8px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-track {
+      background: ${theme === "dark" ? "#2a2a2a" : "#f1f1f1"};
+      border-radius: 10px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-thumb {
+      background: ${theme === "dark" ? "#555" : "#888"};
+      border-radius: 10px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: ${theme === "dark" ? "#777" : "#555"};
+    }
+  `;
 
   return (
     <div
@@ -228,9 +321,6 @@ const DashboardPage = () => {
             </h2>
             <div className="flex justify-between items-baseline flex-wrap gap-y-3 gap-x-2">
               <p className="text-3xl font-bold">{totalLeads.toLocaleString()}</p>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-successGreenLight text-successGreenDark whitespace-nowrap">
-                +17% {t.vsLastMonth}
-              </span>
             </div>
           </div>
 
@@ -242,9 +332,6 @@ const DashboardPage = () => {
             </h2>
             <div className="flex justify-between items-baseline flex-wrap gap-y-3 gap-x-2">
               <p className="text-3xl font-bold">{highPotentialLeads.toLocaleString()}</p>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-dangerRedLight text-dangerRedDark whitespace-nowrap">
-                -3.8% {t.vsLastMonth}
-              </span>
             </div>
           </div>
 
@@ -256,9 +343,6 @@ const DashboardPage = () => {
             </h2>
             <div className="flex justify-between items-baseline flex-wrap gap-y-3 gap-x-2">
               <p className="text-3xl font-bold">{averageLeadScore.toLocaleString()}</p>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-successGreenLight text-successGreenDark whitespace-nowrap">
-                +5% {t.vsLastMonth}
-              </span>
             </div>
           </div>
         </section>
@@ -385,45 +469,71 @@ const DashboardPage = () => {
         <section
           className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
         >
+          <style>{scrollbarStyle}</style>
           <h2 className="text-lg font-semibold mb-4">{t.potentialLeadsTable}</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-borderColorLight dark:divide-borderColorDark">
+          <div className="table-scroll-container overflow-x-auto max-w-full" style={{ maxWidth: '947px' }}>
+            <table className="min-w-[1000px] divide-y divide-borderColorLight dark:divide-borderColorDark">
+
               <thead className={tableHeaderBgClass}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.name}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.score}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.age}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.job}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.lastContact}</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t.action}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.name}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.score}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.age}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.job}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.lastContact}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.status}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.results}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.action}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borderColorLight dark:divide-borderColorDark">
                 {tableData.map((lead, index) => (
                   <tr key={index} className={theme === "dark" ? "hover:bg-darkSecondary" : "hover:bg-gray-50"}>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-bold">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
-                            lead.leadScore >= 70
-                              ? "bg-red-500"
-                              : lead.leadScore >= 40
-                              ? "bg-orange-500"
-                              : "bg-blue-500"
-                          }`}
-                        >
-                          {lead.leadScore}
-                        </span>
-                      </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{t.jobMapping[lead.job] || lead.job}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">{lead.name}</td>
+                    <td className="px-3 py-4 whitespace-nowrap font-bold">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
+                          lead.leadScore >= 70
+                            ? "bg-red-500"
+                            : lead.leadScore >= 40
+                            ? "bg-orange-500"
+                            : "bg-blue-500"
+                        }`}
+                      >
+                        {lead.leadScore}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{lead.age}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{t.jobMapping[lead.job] || lead.job}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {monthMapping[lang][lead.lastContact.toLowerCase()] || lead.lastContact}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <select
+                        value={leadStatuses[lead.id] || lead.poutcome || "unknown"}
+                        onChange={(e) => updateStatus(lead.id, e.target.value)}
+                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
+                      >
+                        <option value="contacted">{t.statusOptions.contacted}</option>
+                        <option value="not.contacted">{t.statusOptions.notContacted}</option>
+                        <option value="attempted.contacted">{t.statusOptions.attemptedContacted}</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <select
+                        value={leadResults[lead.id] || "unknown"}
+                        onChange={(e) => updateResult(lead.id, e.target.value)}
+                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
+                      >
+                        <option value="interested">{t.statusOptions.interested}</option>
+                        <option value="not.interested">{t.statusOptions.notInterested}</option>
+                        <option value="follow.up">{t.statusOptions.followUp}</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => router.push(`/nasabah/${lead.id || 20777}`)}
-                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md text-sm"
+                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md text-sm whitespace-nowrap"
                       >
                         {t.viewDetails}
                       </button>
@@ -434,6 +544,7 @@ const DashboardPage = () => {
             </table>
           </div>
         </section>
+
       </div>
     </div>
   );

@@ -66,7 +66,12 @@ const translations = {
     poutcomeValues: {
       success: "Success",
       failure: "Failure",
-      unknown: "Unknown"
+      unknown: "Unknown",
+      "attempted.contacted": "Attempted Contacted",
+      contacted: "Contacted",
+      notContacted: "Not Contacted",
+      interested: "Interested",
+      notInterested: "Not Interested"
     },
     potentialValues: {
       Hot: "Hot",
@@ -147,7 +152,12 @@ const translations = {
     poutcomeValues: {
       success: "Berhasil",
       failure: "Gagal",
-      unknown: "Tidak Diketahui"
+      unknown: "Tidak Diketahui",
+      "attempted.contacted": "Coba Dihubungi",
+      contacted: "Dihubungi",
+      notContacted: "Belum Dihubungi",
+      interested: "Tertarik",
+      notInterested: "Tidak Tertarik"
     },
     potentialValues: {
     Hot: "Panas",
@@ -340,9 +350,6 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                   <p className={`${textSecondary} text-sm mb-2`}>{t.leadScore}</p>
                   <div className="flex items-baseline justify-between">
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">{leadScore}</span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-successGreenLight text-successGreenDark whitespace-nowrap">
-                      +17% vs average
-                    </span>
                   </div>
                 </div>
 
@@ -357,8 +364,8 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
               {/* Last Campaign */}
               <div className={`rounded-xl shadow-custom-sm border ${borderColor} p-4 ${bgCard}`}>
                 <p className={`${textSecondary} text-sm mb-2`}>{t.lastCampaign}</p>
-                <p className={`text-2xl font-semibold ${getPoutcomeColor(nasabah?.campaignInfo?.poutcome)}`}>
-                  {translateField("poutcome", nasabah?.campaignInfo?.poutcome, lang)}
+                <p className="text-2xl font-semibold text-blue-600">
+                  {nasabah?.campaignInfo?.campaign ?? "-"}
                 </p>
               </div>
 
@@ -408,9 +415,10 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-block px-3 py-1 text-xs font-medium rounded-xl ${
-                          nasabah?.campaignInfo?.poutcome === "success" ? "bg-green-100 text-green-700"
-                          : nasabah?.campaignInfo?.poutcome === "unknown" ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
+                          nasabah?.campaignInfo?.poutcome === "success" ? "bg-green-100 text-green-700" :
+                          nasabah?.campaignInfo?.poutcome === "unknown" ? "bg-yellow-100 text-yellow-700" :
+                          nasabah?.campaignInfo?.poutcome === "attempted.contacted" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-red-100 text-red-700"
                         }`}>
                           {translateField("poutcome", nasabah?.campaignInfo?.poutcome, lang)}
                         </span>

@@ -36,7 +36,20 @@ const LeadScorePage = () => {
       try {
         const res = await fetch("/api/leadscore");
         const result = await res.json();
-        setTableData(result.tableData || []);
+        const tableData = result.tableData || [];
+
+        setTableData(tableData);
+
+        // Sinkronisasi awal untuk dropdown
+        const initialStatuses = {};
+        const initialResults = {};
+        tableData.forEach((lead) => {
+          initialStatuses[lead.id] = lead.status || "unknown";
+          initialResults[lead.id] = lead.result || "interested";
+        });
+        setLeadStatuses(initialStatuses);
+        setLeadResults(initialResults);
+
       } catch (err) {
         console.error("Failed to fetch data:", err);
         setTableData([]);
@@ -46,6 +59,7 @@ const LeadScorePage = () => {
     };
     fetchData();
   }, []);
+
 
   // --- 2. LOGIC FILTERING ---
   const filteredData = tableData.filter((item) => {
@@ -174,6 +188,14 @@ const LeadScorePage = () => {
       student: "Student",
       technician: "Technician",
       unemployed: "Unemployed",
+      statusOptions: {
+        contacted: "Contacted",
+        notContacted: "Not Contacted",
+        attemptedContacted: "Attempted Contacted",
+        interested: "Interested",
+        notInterested: "Not Interested",
+        followUp: "Follow Up",
+      },
     },
     id: {
       title: "Skor Prospek",
@@ -198,10 +220,54 @@ const LeadScorePage = () => {
       student: "Pelajar",
       technician: "Teknisi",
       unemployed: "Pengangguran",
+      statusOptions: {
+        contacted: "Dihubungi",
+        notContacted: "Belum Dihubungi",
+        attemptedContacted: "Coba Dihubungi",
+        interested: "Tertarik",
+        notInterested: "Tidak Tertarik",
+        followUp: "Tindak Lanjut",
+      },
     },
   };
 
   const t = translations[lang];
+
+  const [leadStatuses, setLeadStatuses] = useState({}); 
+  const [leadResults, setLeadResults] = useState({});  
+
+  const updateStatus = async (id, value) => {
+    await fetch(`/api/leadscore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: value }),
+    });
+    setLeadStatuses(prev => ({ ...prev, [id]: value }));
+  };
+
+  const updateResult = async (id, value) => {
+  try {
+    const res = await fetch(`/api/leadscore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, result: value }), // ✅ perbaiki key jadi 'result'
+    });
+
+    if (res.ok) {
+      setLeadResults(prev => ({ ...prev, [id]: value }));
+      
+      // Opsional: sinkronisasi tableData juga
+      setTableData(prev =>
+        prev.map(lead => (lead.id === id ? { ...lead, result: value } : lead))
+      );
+    } else {
+      console.error("Failed to update result");
+    }
+  } catch (err) {
+    console.error("Error updating result:", err);
+  }
+};
+
 
   // Styling Classes
   const textColorClass =
@@ -221,6 +287,26 @@ const LeadScorePage = () => {
     theme === "dark" ? "text-darkFontColor" : "text-fontColor";
   const placeholderColor =
     theme === "dark" ? "placeholder-textGrayDark" : "placeholder-textGrayLight";
+  
+  const scrollbarStyle = `
+    .table-scroll-container::-webkit-scrollbar {
+      height: 8px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-track {
+      background: ${theme === "dark" ? "#2a2a2a" : "#f1f1f1"};
+      border-radius: 10px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-thumb {
+      background: ${theme === "dark" ? "#555" : "#888"};
+      border-radius: 10px;
+    }
+    
+    .table-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: ${theme === "dark" ? "#777" : "#555"};
+    }
+  `;
 
   if (loading)
     return (
@@ -328,108 +414,79 @@ const LeadScorePage = () => {
         </div>
 
         {/* TABEL */}
-        <section>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-borderColorLight dark:divide-borderColorDark">
+        <section className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}>
+          <style>{scrollbarStyle}</style>
+          <h2 className="text-lg font-semibold mb-4">{t.leadScoreTable}</h2>
+
+          {/* Container tabel dengan scroll horizontal */}
+          <div className="table-scroll-container overflow-x-auto max-w-full" style={{ maxWidth: '947px' }}>
+            <table className="min-w-[1100px] divide-y divide-borderColorLight dark:divide-borderColorDark">
               <thead className={tableHeaderBgClass}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
-                    {t.name}
-                  </th>
-                  <th
-                    scope="col"
-                    onClick={handleSortToggle}
-                    className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider cursor-pointer select-none hover:text-primary transition-colors group"
-                  >
-                    <div className="flex items-center gap-1">
-                      {t.score}
-                      <svg
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                          sortOrder === "asc" ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </div>
-                  </th>
-
-                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
-                    {t.age}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
-                    {t.job}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
-                    {t.lastContact}
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-textGrayLight dark:text-textGrayDark uppercase tracking-wider">
-                    {t.action}
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.name}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.score}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.age}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.job}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.lastContact}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.status}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.results}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.action}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borderColorLight dark:divide-borderColorDark">
-                {currentItems.length > 0 ? (
-                  currentItems.map((lead, index) => (
-                    <tr
-                      key={lead.id || index}
-                      className={
-                        theme === "dark"
-                          ? "hover:bg-darkSecondary"
-                          : "hover:bg-gray-50"
-                      }
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {lead.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-bold">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
-                            lead.score >= 70
-                              ? "bg-red-500"
-                              : lead.score >= 40
-                              ? "bg-orange-500"
-                              : "bg-blue-500"
-                          }`}
-                        >
-                          {lead.score}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {lead.age}
-                      </td>
-                      
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {lang === "id" ? lead.job_id : lead.job}
-                      </td>
+                {currentItems.length > 0 ? currentItems.map((lead, index) => (
+                  <tr key={lead.id || index} className={theme === "dark" ? "hover:bg-darkSecondary" : "hover:bg-gray-50"}>
+                    <td className="px-4 py-4 whitespace-nowrap">{lead.name}</td>
+                    <td className="px-3 py-4 whitespace-nowrap font-bold">
+                      <span className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
+                        lead.score >= 70 ? "bg-red-500" :
+                        lead.score >= 40 ? "bg-orange-500" : "bg-blue-500"
+                      }`}>
+                        {lead.score}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{lang === "id" ? lead.job_id : lead.job}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{lang === "id" ? lead.lastContact_id : lead.lastContact}</td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {lang === "id" ? lead.lastContact_id : lead.lastContact}
-                      </td>
+                    {/* Kolom Status */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <select
+                        value={leadStatuses[lead.id] || lead.poutcome || "unknown"}
+                        onChange={(e) => updateStatus(lead.id, e.target.value)}
+                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
+                      >
+                        <option value="contacted">{t.statusOptions.contacted}</option>
+                        <option value="not.contacted">{t.statusOptions.notContacted}</option>
+                        <option value="attempted.contacted">{t.statusOptions.attemptedContacted}</option>
+                      </select>
+                    </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => router.push(`/nasabah/${lead.id}`)}
-                          className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md hover:brightness-110 text-sm"
-                        >
-                          {t.viewDetails}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+                    {/* Kolom Results */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <select
+                        value={leadResults[lead.id] || "unknown"}
+                        onChange={(e) => updateResult(lead.id, e.target.value)}
+                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
+                      >
+                        <option value="interested">{t.statusOptions.interested}</option>
+                        <option value="not.interested">{t.statusOptions.notInterested}</option>
+                        <option value="follow.up">{t.statusOptions.followUp}</option>
+                      </select>
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => router.push(`/nasabah/${lead.id}`)}
+                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md text-sm whitespace-nowrap"
+                      >
+                        {t.viewDetails}
+                      </button>
+                    </td>
+                  </tr>
+                )) : (
                   <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-10 text-center text-textGrayLight"
-                    >
+                    <td colSpan="8" className="px-6 py-10 text-center text-textGrayLight">
                       {lang === "id" ? "Data tidak ditemukan" : "No data found"}
                     </td>
                   </tr>
@@ -438,6 +495,7 @@ const LeadScorePage = () => {
             </table>
           </div>
         </section>
+
 
         {/* PAGINATION */}
         <section className="flex justify-center items-center mt-6">
