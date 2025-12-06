@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@nivo/bar": "^0.99.0",
     "@nivo/core": "^0.99.0",
     "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
+    "@nivo/treemap": "^0.99.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "d3": "^7.9.0",

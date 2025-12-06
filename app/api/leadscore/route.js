@@ -9,11 +9,11 @@ export async function GET(req) {
   const [resultRows] = await db.execute("SELECT id, results FROM lead_results");
 
   const statusMap = {};
-  statusRows.forEach(r => (statusMap[r.id] = r.status));
+  statusRows.forEach((r) => (statusMap[r.id] = r.status));
 
   const resultMap = {};
-  resultRows.forEach(r => (resultMap[r.id] = r.results));
-  
+  resultRows.forEach((r) => (resultMap[r.id] = r.results));
+
   const monthMapEn = {
     jan: "January",
     feb: "February",
@@ -60,16 +60,20 @@ export async function GET(req) {
   };
 
   // --- Olah data ---
-  const tableData = data.map(lead => ({
+  const tableData = data.map((lead) => ({
     ...lead,
     score: Math.round(lead.confidence),
     name: lead.name,
     age: lead.age,
     job: lead.job ? lead.job.charAt(0).toUpperCase() + lead.job.slice(1) : "",
     job_id: lead.job ? jobMapId[lead.job.toLowerCase()] || lead.job : "",
-    lastContact: lead.month ? monthMapEn[lead.month.toLowerCase()] || lead.month : "",
+    lastContact: lead.month
+      ? monthMapEn[lead.month.toLowerCase()] || lead.month
+      : "",
     lastContact_id: lead.month
-      ? monthMapId[lead.month.toLowerCase()] || monthMapEn[lead.month.toLowerCase()] || lead.month
+      ? monthMapId[lead.month.toLowerCase()] ||
+        monthMapEn[lead.month.toLowerCase()] ||
+        lead.month
       : "",
     status: statusMap[lead.id] || "unknown",
     result: resultMap[lead.id] || "interested",
@@ -79,7 +83,8 @@ export async function GET(req) {
   const totalLeads = data.length;
   const highPotentialLeads = data.filter((lead) => lead.leadScore > 50).length;
   const averageLeadScore = Math.round(
-    data.reduce((sum, lead) => sum + Math.round(lead.confidence), 0) / totalLeads
+    data.reduce((sum, lead) => sum + Math.round(lead.confidence), 0) /
+      totalLeads
   );
 
   return NextResponse.json({
@@ -87,7 +92,7 @@ export async function GET(req) {
     totalLeads,
     highPotentialLeads,
     averageLeadScore,
-    lineData
+    lineData,
   });
 }
 
