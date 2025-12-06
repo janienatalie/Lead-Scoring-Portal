@@ -250,7 +250,7 @@ const LoginPage = () => {
       >
         <div className="w-full h-full bg-gradient-to-r from-primary to-secondary rounded-3xl flex items-center justify-center p-12">
           <Image
-            src="/login.png" 
+            src="/login.png"
             width={800}
             height={800}
             alt="Login Illustration"
