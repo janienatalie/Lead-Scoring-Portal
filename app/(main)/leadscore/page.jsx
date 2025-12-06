@@ -13,22 +13,26 @@ const LeadScorePage = () => {
   const router = useRouter();
 
   // --- STATE MANAGEMENT ---
-  const [tableData, setTableData] = useState([]); // Menampung RIBUAN data
+  const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [filterJob, setFilterJob] = useState("");
   const [filterScore, setFilterScore] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterResult, setFilterResult] = useState("");
 
-  // Sorting State (Baru)
-  // 'desc' = Descending (90, 80, 70) - Default
-  // 'asc' = Ascending (40, 50, 60)
+  // Sorting State
   const [sortOrder, setSortOrder] = useState("desc");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Batas data per halaman
+  const itemsPerPage = 10;
+
+  // State untuk menyimpan perubahan status/result per baris
+  const [leadStatuses, setLeadStatuses] = useState({});
+  const [leadResults, setLeadResults] = useState({});
 
   // --- 1. FETCH DATA ---
   useEffect(() => {
@@ -43,13 +47,26 @@ const LeadScorePage = () => {
         // Sinkronisasi awal untuk dropdown
         const initialStatuses = {};
         const initialResults = {};
+
         tableData.forEach((lead) => {
-          initialStatuses[lead.id] = lead.status || "unknown";
-          initialResults[lead.id] = lead.result || "interested";
+          // 1. Logika Status Awal
+          const statusDB =
+            lead.status === "unknown" || !lead.status
+              ? "not.contacted"
+              : lead.status;
+
+          initialStatuses[lead.id] = statusDB;
+
+          // 2. Logika Result Awal
+          if (statusDB !== "contacted") {
+            initialResults[lead.id] = "unknown";
+          } else {
+            initialResults[lead.id] = lead.result || "unknown";
+          }
         });
+
         setLeadStatuses(initialStatuses);
         setLeadResults(initialResults);
-
       } catch (err) {
         console.error("Failed to fetch data:", err);
         setTableData([]);
@@ -60,21 +77,23 @@ const LeadScorePage = () => {
     fetchData();
   }, []);
 
-
   // --- 2. LOGIC FILTERING ---
   const filteredData = tableData.filter((item) => {
-    // A. Search (Mencari di Nama, Job Inggris, atau Job Indo)
     const query = searchQuery.toLowerCase();
     const matchesSearch =
       (item.name && item.name.toLowerCase().includes(query)) ||
       (item.job && item.job.toLowerCase().includes(query)) ||
       (item.job_id && item.job_id.toLowerCase().includes(query));
 
-    // B. Filter Job (Mencocokkan dengan Job Inggris - Canonical Value)
     const matchesJob =
       filterJob === "" || filterJob === "Job" || item.job === filterJob;
 
-    // C. Filter Score (3 Kategori)
+    const currentStatus = leadStatuses[item.id] || "not.contacted";
+    const matchesStatus = filterStatus === "" || currentStatus === filterStatus;
+
+    const currentResult = leadResults[item.id] || "unknown";
+    const matchesResult = filterResult === "" || currentResult === filterResult;
+
     let matchesScore = true;
     if (filterScore === ">70") {
       matchesScore = item.score >= 70;
@@ -84,24 +103,27 @@ const LeadScorePage = () => {
       matchesScore = item.score < 40;
     }
 
-    return matchesSearch && matchesJob && matchesScore;
+    return (
+      matchesSearch &&
+      matchesJob &&
+      matchesScore &&
+      matchesStatus &&
+      matchesResult
+    );
   });
 
-  // --- LOGIC SORTING (BARU) ---
-  // Mengurutkan filteredData berdasarkan sortOrder
+  // --- LOGIC SORTING ---
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortOrder === "asc") {
-      return a.score - b.score; // Kecil ke Besar
+      return a.score - b.score;
     } else {
-      return b.score - a.score; // Besar ke Kecil (Default)
+      return b.score - a.score;
     }
   });
 
   // --- 3. LOGIC PAGINATION ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-
-  // GUNAKAN 'sortedData' UNTUK PAGINATION (Bukan filteredData lagi)
   const currentItems = sortedData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
 
@@ -111,7 +133,6 @@ const LeadScorePage = () => {
     }
   };
 
-  // Handler untuk mengubah urutan saat Header Score diklik
   const handleSortToggle = () => {
     setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
   };
@@ -119,31 +140,113 @@ const LeadScorePage = () => {
   // Reset ke halaman 1 jika filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterJob, filterScore]);
+  }, [searchQuery, filterJob, filterScore, filterStatus, filterResult]);
+
+  // Mapping Bahasa
+  const translations = {
+    en: {
+      title: "Lead Scoring",
+      searchPlaceholder: "Search...", // Diperpendek agar muat
+      job: "Job",
+      score: "Score",
+      status: "Status",
+      all: "(All)",
+      no: "No",
+      print: "Print PDF",
+      name: "Name",
+      age: "Age",
+      lastContact: "Last Contact",
+      results: "Results",
+      action: "Action",
+      viewDetails: "View Details",
+      statusOptions: {
+        contacted: "Contacted",
+        notContacted: "Not Contacted",
+        attemptedContacted: "Attempted Contacted",
+        interested: "Interested",
+        notInterested: "Not Interested",
+        followUp: "Follow Up",
+      },
+      leadScoreTable: "Lead Score Table",
+      jobMapping: {
+        admin: "Admin",
+        "blue-collar": "Blue-collar",
+        entrepreneur: "Entrepreneur",
+        housemaid: "Housemaid",
+        management: "Management",
+        retired: "Retired",
+        "self-employed": "Self-employed",
+        services: "Services",
+        student: "Student",
+        technician: "Technician",
+        unemployed: "Unemployed",
+        unknown: "Unknown",
+      },
+    },
+    id: {
+      title: "Skor Prospek",
+      searchPlaceholder: "Cari...", // Diperpendek agar muat
+      job: "Pekerjaan",
+      score: "Skor",
+      status: "Status",
+      all: "(Semua)",
+      no: "No",
+      print: "Cetak PDF",
+      name: "Nama",
+      age: "Usia",
+      lastContact: "Kontak Terakhir",
+      results: "Hasil",
+      action: "Aksi",
+      viewDetails: "Lihat Detail",
+      statusOptions: {
+        contacted: "Dihubungi",
+        notContacted: "Belum Dihubungi",
+        attemptedContacted: "Coba Dihubungi",
+        interested: "Tertarik",
+        notInterested: "Tidak Tertarik",
+        followUp: "Tindak Lanjut",
+      },
+      leadScoreTable: "Tabel Skor Prospek",
+      jobMapping: {
+        admin: "Admin",
+        "blue-collar": "Buruh",
+        entrepreneur: "Pengusaha",
+        housemaid: "ART",
+        management: "Manajemen",
+        retired: "Pensiunan",
+        "self-employed": "Pekerja Lepas",
+        services: "Layanan",
+        student: "Pelajar",
+        technician: "Teknisi",
+        unemployed: "Pengangguran",
+        unknown: "Tidak Diketahui",
+      },
+    },
+  };
+
+  const t = translations[lang];
 
   // --- 4. EXPORT PDF ---
   const handlePrint = () => {
     const doc = new jsPDF();
-
     const title = lang === "id" ? "Laporan Skor Prospek" : "Lead Score Report";
     doc.text(`${title} - Page ${currentPage}`, 14, 10);
 
-    // Header Tabel PDF sesuai bahasa
     const tableColumn =
       lang === "id"
-        ? ["ID", "Nama", "Skor", "Usia", "Pekerjaan", "Kontak Terakhir"]
-        : ["ID", "Name", "Score", "Age", "Job", "Last Contact"];
+        ? ["No", "ID", "Nama", "Skor", "Usia", "Pekerjaan", "Kontak Terakhir"]
+        : ["No", "ID", "Name", "Score", "Age", "Job", "Last Contact"];
 
     const tableRows = [];
 
-    // Gunakan 'sortedData' agar urutan di PDF sesuai tampilan layar
-    sortedData.forEach((lead) => {
-      // Pilih bahasa yang tepat untuk data di PDF
-      const jobDisplay = lang === "id" ? lead.job_id : lead.job;
+    sortedData.forEach((lead, i) => {
+      const jobKey = lead.job?.toLowerCase().replace(".", "") || "unknown";
+      const jobDisplay = t.jobMapping[jobKey] || lead.job;
       const contactDisplay =
         lang === "id" ? lead.lastContact_id : lead.lastContact;
 
       const leadData = [
+        i + 1,
         lead.id,
         lead.name,
         lead.score,
@@ -163,111 +266,55 @@ const LeadScorePage = () => {
     doc.save("lead_score_report.pdf");
   };
 
-  // Mapping untuk perubahan bahasa
-  const translations = {
-    en: {
-      title: "Lead Scoring",
-      searchPlaceholder: "Search ID, name, job...",
-      job: "Job",
-      score: "Score",
-      print: "Print PDF",
-      name: "Name",
-      age: "Age",
-      lastContact: "Last Contact",
-      action: "Action",
-      viewDetails: "View Details",
-      // Opsi Job
-      admin: "Admin",
-      bluecollar: "Blue-collar",
-      entrepreneur: "Entrepreneur",
-      housemaid: "Housemaid",
-      manager: "Management",
-      retired: "Retired",
-      selfemployed: "Self-employed",
-      services: "Services",
-      student: "Student",
-      technician: "Technician",
-      unemployed: "Unemployed",
-      statusOptions: {
-        contacted: "Contacted",
-        notContacted: "Not Contacted",
-        attemptedContacted: "Attempted Contacted",
-        interested: "Interested",
-        notInterested: "Not Interested",
-        followUp: "Follow Up",
-      },
-    },
-    id: {
-      title: "Skor Prospek",
-      searchPlaceholder: "Cari ID, nama, pekerjaan...",
-      job: "Pekerjaan",
-      score: "Skor",
-      print: "Cetak PDF",
-      name: "Nama",
-      age: "Usia",
-      lastContact: "Kontak Terakhir",
-      action: "Aksi",
-      viewDetails: "Lihat Detail",
-      // Opsi Job
-      admin: "Admin",
-      bluecollar: "Buruh",
-      entrepreneur: "Wiraswasta",
-      housemaid: "ART",
-      manager: "Manajemen",
-      retired: "Pensiunan",
-      selfemployed: "Wirausaha",
-      services: "Layanan",
-      student: "Pelajar",
-      technician: "Teknisi",
-      unemployed: "Pengangguran",
-      statusOptions: {
-        contacted: "Dihubungi",
-        notContacted: "Belum Dihubungi",
-        attemptedContacted: "Coba Dihubungi",
-        interested: "Tertarik",
-        notInterested: "Tidak Tertarik",
-        followUp: "Tindak Lanjut",
-      },
-    },
-  };
-
-  const t = translations[lang];
-
-  const [leadStatuses, setLeadStatuses] = useState({}); 
-  const [leadResults, setLeadResults] = useState({});  
-
   const updateStatus = async (id, value) => {
-    await fetch(`/api/leadscore`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status: value }),
-    });
-    setLeadStatuses(prev => ({ ...prev, [id]: value }));
+    setLeadStatuses((prev) => ({ ...prev, [id]: value }));
+
+    if (value !== "contacted") {
+      setLeadResults((prev) => ({ ...prev, [id]: "unknown" }));
+      try {
+        await fetch(`/api/leadscore`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, result: "unknown" }),
+        });
+      } catch (err) {
+        console.error("Failed to reset result", err);
+      }
+    }
+
+    try {
+      await fetch(`/api/leadscore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: value }),
+      });
+    } catch (err) {
+      console.error("Failed to update status in DB", err);
+    }
   };
 
   const updateResult = async (id, value) => {
-  try {
-    const res = await fetch(`/api/leadscore`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, result: value }), // ✅ perbaiki key jadi 'result'
-    });
+    try {
+      const res = await fetch(`/api/leadscore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, result: value }),
+      });
 
-    if (res.ok) {
-      setLeadResults(prev => ({ ...prev, [id]: value }));
-      
-      // Opsional: sinkronisasi tableData juga
-      setTableData(prev =>
-        prev.map(lead => (lead.id === id ? { ...lead, result: value } : lead))
-      );
-    } else {
-      console.error("Failed to update result");
+      if (res.ok) {
+        setLeadResults((prev) => ({ ...prev, [id]: value }));
+        setTableData((prev) =>
+          prev.map((lead) =>
+            lead.id === id ? { ...lead, result: value } : lead
+          )
+        );
+      } else {
+        console.error("Failed to update result");
+      }
+    } catch (err) {
+      console.error("Error updating result:", err);
     }
-  } catch (err) {
-    console.error("Error updating result:", err);
-  }
-};
-
+  };
 
   // Styling Classes
   const textColorClass =
@@ -279,6 +326,7 @@ const LeadScorePage = () => {
     theme === "dark" ? "bg-darkSecondary" : "bg-gray-50";
   const tableBorderColor =
     theme === "dark" ? "border-borderColorDark" : "border-borderColorLight";
+
   const inputBgColor =
     theme === "dark"
       ? "bg-darkSecondary border-borderColorDark"
@@ -287,22 +335,19 @@ const LeadScorePage = () => {
     theme === "dark" ? "text-darkFontColor" : "text-fontColor";
   const placeholderColor =
     theme === "dark" ? "placeholder-textGrayDark" : "placeholder-textGrayLight";
-  
+
   const scrollbarStyle = `
     .table-scroll-container::-webkit-scrollbar {
       height: 8px;
     }
-    
     .table-scroll-container::-webkit-scrollbar-track {
       background: ${theme === "dark" ? "#2a2a2a" : "#f1f1f1"};
       border-radius: 10px;
     }
-    
     .table-scroll-container::-webkit-scrollbar-thumb {
       background: ${theme === "dark" ? "#555" : "#888"};
       border-radius: 10px;
     }
-    
     .table-scroll-container::-webkit-scrollbar-thumb:hover {
       background: ${theme === "dark" ? "#777" : "#555"};
     }
@@ -345,42 +390,92 @@ const LeadScorePage = () => {
                     ></path>
                   </svg>
                 </span>
+                {/* ✅ UPDATE: w-48 (192px) */}
                 <input
                   type="text"
                   placeholder={t.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`p-2 pl-10 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-60`}
+                  className={`p-2 pl-10 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} ${placeholderColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-48`}
                 />
               </div>
 
               {/* FILTER JOB */}
+              {/* ✅ UPDATE: w-32 (128px) */}
               <select
                 value={filterJob}
                 onChange={(e) => setFilterJob(e.target.value)}
-                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-40`}
+                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-32`}
               >
-                <option value="">{t.job} (All)</option>
-                <option value="Admin.">{t.admin}</option>
-                <option value="Blue-collar">{t.bluecollar}</option>
-                <option value="Entrepreneur">{t.entrepreneur}</option>
-                <option value="Housemaid">{t.housemaid}</option>
-                <option value="Management">{t.manager}</option>
-                <option value="Retired">{t.retired}</option>
-                <option value="Self-employed">{t.selfemployed}</option>
-                <option value="Services">{t.services}</option>
-                <option value="Student">{t.student}</option>
-                <option value="Technician">{t.technician}</option>
-                <option value="Unemployed">{t.unemployed}</option>
+                <option value="">
+                  {t.job} {t.all}
+                </option>
+                <option value="Admin.">{t.jobMapping["admin"]}</option>
+                <option value="Blue-collar">
+                  {t.jobMapping["blue-collar"]}
+                </option>
+                <option value="Entrepreneur">
+                  {t.jobMapping["entrepreneur"]}
+                </option>
+                <option value="Housemaid">{t.jobMapping["housemaid"]}</option>
+                <option value="Management">{t.jobMapping["management"]}</option>
+                <option value="Retired">{t.jobMapping["retired"]}</option>
+                <option value="Self-employed">
+                  {t.jobMapping["self-employed"]}
+                </option>
+                <option value="Services">{t.jobMapping["services"]}</option>
+                <option value="Student">{t.jobMapping["student"]}</option>
+                <option value="Technician">{t.jobMapping["technician"]}</option>
+                <option value="Unemployed">{t.jobMapping["unemployed"]}</option>
+              </select>
+
+              {/* FILTER STATUS */}
+              {/* ✅ UPDATE: w-32 (128px) */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-32`}
+              >
+                <option value="">
+                  {t.status} {t.all}
+                </option>
+                <option value="contacted">{t.statusOptions.contacted}</option>
+                <option value="not.contacted">
+                  {t.statusOptions.notContacted}
+                </option>
+                <option value="attempted.contacted">
+                  {t.statusOptions.attemptedContacted}
+                </option>
+              </select>
+
+              {/* FILTER RESULT */}
+              {/* ✅ UPDATE: w-32 & HAPUS Pending Status */}
+              <select
+                value={filterResult}
+                onChange={(e) => setFilterResult(e.target.value)}
+                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-32`}
+              >
+                <option value="">
+                  {t.results} {t.all}
+                </option>
+                <option value="interested">{t.statusOptions.interested}</option>
+                <option value="not.interested">
+                  {t.statusOptions.notInterested}
+                </option>
+                <option value="follow.up">{t.statusOptions.followUp}</option>
+                {/* Opsi Pending/Unknown sudah dihapus dari filter */}
               </select>
 
               {/* FILTER SCORE */}
+              {/* ✅ UPDATE: w-32 (128px) */}
               <select
                 value={filterScore}
                 onChange={(e) => setFilterScore(e.target.value)}
-                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-40`}
+                className={`p-2 rounded-md border ${inputBgColor} ${tableBorderColor} ${inputTextColor} text-sm focus:outline-none focus:ring-1 focus:ring-primary w-32`}
               >
-                <option value="">{t.score} (All)</option>
+                <option value="">
+                  {t.score} {t.all}
+                </option>
                 <option value=">70">&gt; 70</option>
                 <option value="40-69">40 - 69</option>
                 <option value="<40">&lt; 40</option>
@@ -391,7 +486,7 @@ const LeadScorePage = () => {
             <div>
               <button
                 onClick={handlePrint}
-                className="flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm"
+                className="flex items-center justify-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md transition-all duration-200 hover:brightness-110 text-sm whitespace-nowrap"
               >
                 <svg
                   width="16"
@@ -414,79 +509,170 @@ const LeadScorePage = () => {
         </div>
 
         {/* TABEL */}
-        <section className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}>
+        <section
+          className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
+        >
           <style>{scrollbarStyle}</style>
           <h2 className="text-lg font-semibold mb-4">{t.leadScoreTable}</h2>
 
-          {/* Container tabel dengan scroll horizontal */}
-          <div className="table-scroll-container overflow-x-auto max-w-full" style={{ maxWidth: '947px' }}>
+          <div
+            className="table-scroll-container overflow-x-auto max-w-full"
+            style={{ maxWidth: "995px" }}
+          >
             <table className="min-w-[1100px] divide-y divide-borderColorLight dark:divide-borderColorDark">
               <thead className={tableHeaderBgClass}>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.name}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.score}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.age}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.job}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.lastContact}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.status}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.results}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">{t.action}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.no}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.name}
+                  </th>
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={handleSortToggle}
+                  >
+                    <div className="flex items-center gap-1">
+                      {t.score}
+                      {sortOrder === "desc" ? <span>↓</span> : <span>↑</span>}
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.age}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.job}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.lastContact}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.status}
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.results}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
+                    {t.action}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borderColorLight dark:divide-borderColorDark">
-                {currentItems.length > 0 ? currentItems.map((lead, index) => (
-                  <tr key={lead.id || index} className={theme === "dark" ? "hover:bg-darkSecondary" : "hover:bg-gray-50"}>
-                    <td className="px-4 py-4 whitespace-nowrap">{lead.name}</td>
-                    <td className="px-3 py-4 whitespace-nowrap font-bold">
-                      <span className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
-                        lead.score >= 70 ? "bg-red-500" :
-                        lead.score >= 40 ? "bg-orange-500" : "bg-blue-500"
-                      }`}>
-                        {lead.score}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lead.age}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lang === "id" ? lead.job_id : lead.job}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{lang === "id" ? lead.lastContact_id : lead.lastContact}</td>
+                {currentItems.length > 0 ? (
+                  currentItems.map((lead, index) => {
+                    const currentStatus =
+                      leadStatuses[lead.id] || "not.contacted";
+                    const isResultDisabled = currentStatus !== "contacted";
 
-                    {/* Kolom Status */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <select
-                        value={leadStatuses[lead.id] || lead.poutcome || "unknown"}
-                        onChange={(e) => updateStatus(lead.id, e.target.value)}
-                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
+                    return (
+                      <tr
+                        key={lead.id || index}
+                        className={
+                          theme === "dark"
+                            ? "hover:bg-darkSecondary"
+                            : "hover:bg-gray-50"
+                        }
                       >
-                        <option value="contacted">{t.statusOptions.contacted}</option>
-                        <option value="not.contacted">{t.statusOptions.notContacted}</option>
-                        <option value="attempted.contacted">{t.statusOptions.attemptedContacted}</option>
-                      </select>
-                    </td>
-
-                    {/* Kolom Results */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <select
-                        value={leadResults[lead.id] || "unknown"}
-                        onChange={(e) => updateResult(lead.id, e.target.value)}
-                        className="border rounded-md px-2 py-2 whitespace-nowrap text-sm"
-                      >
-                        <option value="interested">{t.statusOptions.interested}</option>
-                        <option value="not.interested">{t.statusOptions.notInterested}</option>
-                        <option value="follow.up">{t.statusOptions.followUp}</option>
-                      </select>
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => router.push(`/nasabah/${lead.id}`)}
-                        className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md text-sm whitespace-nowrap"
-                      >
-                        {t.viewDetails}
-                      </button>
-                    </td>
-                  </tr>
-                )) : (
+                        <td className="px-4 py-4 whitespace-nowrap text-center text-sm">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          {lead.name}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap font-bold">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-bold text-white ${
+                              lead.score >= 70
+                                ? "bg-red-500"
+                                : lead.score >= 40
+                                ? "bg-orange-500"
+                                : "bg-blue-500"
+                            }`}
+                          >
+                            {lead.score}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {lead.age}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const jobKey =
+                              lead.job?.toLowerCase().replace(".", "") ||
+                              "unknown";
+                            return t.jobMapping[jobKey] || lead.job;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {lang === "id"
+                            ? lead.lastContact_id
+                            : lead.lastContact}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <select
+                            value={currentStatus}
+                            onChange={(e) =>
+                              updateStatus(lead.id, e.target.value)
+                            }
+                            className={`border rounded-md px-2 py-2 whitespace-nowrap text-sm ${inputBgColor} ${inputTextColor} ${tableBorderColor}`}
+                          >
+                            <option value="contacted">
+                              {t.statusOptions.contacted}
+                            </option>
+                            <option value="not.contacted">
+                              {t.statusOptions.notContacted}
+                            </option>
+                            <option value="attempted.contacted">
+                              {t.statusOptions.attemptedContacted}
+                            </option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <select
+                            value={leadResults[lead.id] || "unknown"}
+                            onChange={(e) =>
+                              updateResult(lead.id, e.target.value)
+                            }
+                            disabled={isResultDisabled}
+                            className={`border rounded-md px-2 py-2 whitespace-nowrap text-sm ${inputBgColor} ${inputTextColor} ${tableBorderColor} ${
+                              isResultDisabled
+                                ? "opacity-50 cursor-not-allowed bg-gray-200 dark:bg-gray-700"
+                                : ""
+                            }`}
+                          >
+                            <option value="unknown">
+                              {lang === "id"
+                                ? "Menunggu Status"
+                                : "Pending Status"}
+                            </option>
+                            <option value="interested">
+                              {t.statusOptions.interested}
+                            </option>
+                            <option value="not.interested">
+                              {t.statusOptions.notInterested}
+                            </option>
+                            <option value="follow.up">
+                              {t.statusOptions.followUp}
+                            </option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => router.push(`/nasabah/${lead.id}`)}
+                            className="px-4 py-2 text-white bg-gradient-to-r from-primary to-secondary rounded-md text-sm whitespace-nowrap"
+                          >
+                            {t.viewDetails}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
                   <tr>
-                    <td colSpan="8" className="px-6 py-10 text-center text-textGrayLight">
+                    <td
+                      colSpan="9"
+                      className="px-6 py-10 text-center text-textGrayLight"
+                    >
                       {lang === "id" ? "Data tidak ditemukan" : "No data found"}
                     </td>
                   </tr>
@@ -495,7 +681,6 @@ const LeadScorePage = () => {
             </table>
           </div>
         </section>
-
 
         {/* PAGINATION */}
         <section className="flex justify-center items-center mt-6">
@@ -523,16 +708,12 @@ const LeadScorePage = () => {
                 ></path>
               </svg>
             </button>
-
-            {/* Smart Pagination */}
             {(() => {
               let startPage = Math.max(1, currentPage - 2);
               let endPage = Math.min(totalPages, startPage + 4);
-
               if (endPage - startPage < 4) {
                 startPage = Math.max(1, endPage - 4);
               }
-
               return Array.from(
                 { length: endPage - startPage + 1 },
                 (_, i) => startPage + i
@@ -553,7 +734,6 @@ const LeadScorePage = () => {
                 );
               });
             })()}
-
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages || totalPages === 0}
