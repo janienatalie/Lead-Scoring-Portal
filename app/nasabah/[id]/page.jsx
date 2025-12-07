@@ -75,6 +75,7 @@ const translations = {
       notContacted: "Not Contacted",
       interested: "Interested",
       notInterested: "Not Interested",
+      nonexistent: "Nonexistent"
     },
     statusLabelMapping: {
       contacted: "Contacted",
@@ -176,6 +177,7 @@ const translations = {
       notContacted: "Belum Dihubungi",
       interested: "Tertarik",
       notInterested: "Tidak Tertarik",
+      nonexistent: "Tidak Ada"
     },
     statusLabelMapping: {
       contacted: "Dihubungi",
@@ -255,6 +257,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
         }
         const data = await res.json();
         setNasabah(data);
+        console.log("NASABAH DATA:", nasabah);
       } catch (error) {
         console.error("Error fetching data:", error);
         setNasabah(null);
@@ -321,9 +324,9 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
   }, [nasabah]);
 
   // Helper untuk mengambil data loan yang aman (cek di root atau financialInfo)
-  const housingData = nasabah?.housing || nasabah?.financialInfo?.housing;
-  const loanData = nasabah?.loan || nasabah?.financialInfo?.loan;
-  const defaultData = nasabah?.default || nasabah?.financialInfo?.default;
+  const housingData = nasabah?.financialInfo?.hasHousing ?? nasabah?.housing ?? "no";
+  const loanData = nasabah?.financialInfo?.hasLoan ?? nasabah?.loan ?? "no";
+  const defaultData = nasabah?.financialInfo?.hasDefault ?? nasabah?.default ?? "no";
 
   return (
     <div className={`min-h-screen p-4 ${bgScreen}`}>
@@ -439,7 +442,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                       <p className={`${textMain} font-medium capitalize`}>
                         {translateField(
                           "status",
-                          nasabah.status, // Ambil dari root
+                          nasabah?.campaignInfo?.status, // Ambil dari root
                           lang
                         )}
                       </p>
@@ -452,7 +455,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                       <p className={`${textMain} font-medium capitalize`}>
                         {translateField(
                           "result",
-                          nasabah.result, // Ambil dari root
+                          nasabah?.campaignInfo?.result, // Ambil dari root
                           lang
                         )}
                       </p>

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import db from "../../../lib/db"; // sesuaikan
 
 export async function GET(req, context) {
   try {
@@ -8,71 +9,93 @@ export async function GET(req, context) {
 
     if (!id) {
       return new Response(
-        JSON.stringify({ error: "Invalid ID", message: "ID parameter is required" }),
+        JSON.stringify({ error: "Invalid ID" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Baca file JSON terbaru 
+    // === 1. Ambil data JSON ===
     const filePath = path.join(process.cwd(), "public", "prediction_results.json");
     const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
 
-    // Cari data prediction
-    const predictionResult = data.find(item => String(item.id) === String(id));
+    const lead = data.find(item => String(item.id) === String(id));
 
-    if (!predictionResult) {
+    if (!lead) {
       return new Response(
-        JSON.stringify({ error: "Lead not found", message: `No prediction data found for ID: ${id}` }),
+        JSON.stringify({ error: "Lead not found" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const transformedData = {
-      id: predictionResult.id,
+    // === 2. Ambil status + result dari database ===
+    const [rows] = await db.execute(
+      `SELECT ls.status, lr.results
+       FROM lead_status ls
+       LEFT JOIN lead_results lr ON lr.id = ls.id
+       WHERE ls.id = ?`,
+      [id]
+    );
+
+    const dbStatus = rows?.[0]?.status ?? "unknown"; // fallback kalau belum ada
+    const dbResult = rows?.[0]?.results ?? "-";      // fallback kalau belum ada
+
+    // === 3. Merge JSON + DB (Override status & result) ===
+    const finalStatus = dbStatus;
+    const finalResult = dbResult;
+
+    // === 4. Format response ===
+    const formatted = {
+      id: lead.id,
+
       personalInfo: {
-        name: predictionResult.name,
-        age: predictionResult.age,
-        job: predictionResult.job,
-        marital: predictionResult.marital,
-        education: predictionResult.education,
+        name: lead.name,
+        age: lead.age,
+        job: lead.job,
+        marital: lead.marital,
+        education: lead.education,
       },
+
       financialInfo: {
-        hasDefault: predictionResult.default,
-        hasHousing: predictionResult.housing,
-        hasLoan: predictionResult.loan,
+        hasDefault: lead.default,
+        hasHousing: lead.housing,
+        hasLoan: lead.loan,
       },
+
       campaignInfo: {
-        contact: predictionResult.contact,
-        month: predictionResult.month,
-        dayOfWeek: predictionResult.day_of_week,
-        campaign: predictionResult.campaign,
-        pdays: predictionResult.pdays,
-        previous: predictionResult.previous,
-        poutcome: predictionResult.poutcome,
+        contact: lead.contact,
+        month: lead.month,
+        dayOfWeek: lead.day_of_week,
+        campaign: lead.campaign,
+        pdays: lead.pdays,
+        previous: lead.previous,
+        poutcome: lead.poutcome,
+        status: finalStatus, // override dari DB
+        result: finalResult, // override dari DB
       },
+
       economicInfo: {
-        empVarRate: predictionResult["emp.var.rate"],
-        consPriceIdx: predictionResult["cons.price.idx"],
-        consConfIdx: predictionResult["cons.conf.idx"],
-        euribor3m: predictionResult.euribor3m,
-        nrEmployed: predictionResult["nr.employed"],
+        empVarRate: lead["emp.var.rate"],
+        consPriceIdx: lead["cons.price.idx"],
+        consConfIdx: lead["cons.conf.idx"],
+        euribor3m: lead.euribor3m,
+        nrEmployed: lead["nr.employed"],
       },
+
       prediction: {
-        result: predictionResult.prediction,
-        confidence: predictionResult.confidence,
-        leadScore: Math.round(predictionResult.confidence),
-        leadPotential: 
-          predictionResult.confidence >= 70 ? "Hot" : 
-          predictionResult.confidence >= 40 ? "Warm" : 
-          "Cold",
+        confidence: lead.confidence,
+        leadScore: Math.round(lead.confidence),
+        leadPotential:
+          lead.confidence >= 70
+            ? "Hot"
+            : lead.confidence >= 40
+              ? "Warm"
+              : "Cold",
       },
     };
 
-    return new Response(JSON.stringify(transformedData), {
+    return new Response(JSON.stringify(formatted), {
       status: 200,
-      headers: { 
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
 
   } catch (error) {
