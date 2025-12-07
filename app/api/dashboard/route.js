@@ -4,135 +4,159 @@ import { NextResponse } from "next/server";
 import db from "../../lib/db";
 
 export async function GET(req) {
-  // 1. Baca file json
-  const filePath = path.join(
-    process.cwd(),
-    "public",
-    "prediction_results.json"
-  );
-  const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  try {
+    // 1. Baca file json
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      "prediction_results.json"
+    );
+    const fileContent = fs.readFileSync(filePath, "utf8");
+    const data = JSON.parse(fileContent);
 
-  // 2. Ambil data status & result dari DB
-  const [statusRows] = await db.execute(`SELECT id, status FROM lead_status`);
-  const [resultRows] = await db.execute(`SELECT id, results FROM lead_results`);
+    // 2. Ambil data status & result dari DB
+    const [statusRows] = await db.execute(`SELECT id, status FROM lead_status`);
+    const [resultRows] = await db.execute(
+      `SELECT id, results FROM lead_results`
+    );
 
-  const statusMap = {};
-  statusRows.forEach((row) => (statusMap[row.id] = row.status));
+    const statusMap = {};
+    statusRows.forEach((row) => (statusMap[row.id] = row.status));
 
-  const resultMap = {};
-  resultRows.forEach((row) => (resultMap[row.id] = row.results));
+    const resultMap = {};
+    resultRows.forEach((row) => (resultMap[row.id] = row.results));
 
-  // 3. Merge data
-  const mergedData = data.map((lead) => ({
-    ...lead,
-    status: statusMap[lead.id] || lead.status || "unknown",
-    result: resultMap[lead.id] || lead.result || "unknown",
-    confidence: lead.confidence || 0,
-  }));
-
-  // --- LOGIKA BARU UNTUK CHART ---
-
-  // A. Data Grafik Job (Sudah ada)
-  const jobCountMap = {};
-  mergedData.forEach((lead) => {
-    const jobName =
-      lead.job.charAt(0).toUpperCase() + lead.job.slice(1).replace(/\./g, "");
-    jobCountMap[jobName] = (jobCountMap[jobName] || 0) + 1;
-  });
-  const jobData = Object.keys(jobCountMap).map((job) => ({
-    label: job,
-    value: jobCountMap[job],
-  }));
-
-  // B. Data Grafik Lead Score (Sudah ada)
-  const leadScoreBuckets = Array(11).fill(0);
-  mergedData.forEach((lead) => {
-    const score = Math.round(lead.confidence);
-    const index = Math.min(Math.floor(score / 10), 10);
-    leadScoreBuckets[index]++;
-  });
-  const lineData = [
-    {
-      id: "Lead Score",
-      data: leadScoreBuckets.map((count, i) => ({
-        x: `${i * 10}-${i * 10 + 9}`,
-        y: count,
-      })),
-    },
-  ];
-
-  // C. ✅ DATA BARU: Grafik Result Distribution (Pie Chart)
-  const resultCountMap = {};
-  mergedData.forEach((lead) => {
-    // Default ke 'unknown' jika kosong
-    let res = lead.result || "unknown";
-    resultCountMap[res] = (resultCountMap[res] || 0) + 1;
-  });
-  const resultData = Object.keys(resultCountMap).map((key) => ({
-    id: key, // Nivo Pie butuh 'id'
-    label: key,
-    value: resultCountMap[key],
-  }));
-
-  // D. ✅ DATA BARU: Grafik Status Distribution (Bar Chart)
-  const statusCountMap = {};
-  mergedData.forEach((lead) => {
-    let stat = lead.status || "unknown";
-    statusCountMap[stat] = (statusCountMap[stat] || 0) + 1;
-  });
-  // Format khusus Nivo Bar: [{ status: "contacted", count: 120 }, ...]
-  const statusData = Object.keys(statusCountMap).map((key) => ({
-    status: key,
-    count: statusCountMap[key],
-  }));
-
-  // -----------------------------
-
-  // Statistik Utama
-  const totalLeads = mergedData.length;
-  const highPotentialLeads = mergedData.filter(
-    (lead) => lead.confidence >= 70
-  ).length;
-  const averageLeadScore = (
-    mergedData.reduce((sum, lead) => sum + lead.confidence, 0) /
-    mergedData.length
-  ).toFixed(2);
-
-  // Table Data (Top 5)
-  const tableData = [...mergedData]
-    .map((lead) => ({
+    // 3. Merge data
+    const mergedData = data.map((lead) => ({
       ...lead,
-      leadScore: Math.round(lead.confidence),
-    }))
-    .sort((a, b) => b.leadScore - a.leadScore)
-    .slice(0, 5)
-    .map((lead) => ({
-      id: lead.id,
-      name: lead.name,
-      leadScore: lead.leadScore,
-      age: lead.age,
-      job: lead.job.replace(/\./g, ""),
-      lastContact: lead.month?.toLowerCase() || "-",
-      status: lead.status,
-      result: lead.result,
+      status: statusMap[lead.id] || lead.status || "unknown",
+      result: resultMap[lead.id] || lead.result || "unknown",
+      confidence: lead.confidence || 0,
     }));
 
-  return new Response(
-    JSON.stringify({
+    // --- AGGREGATION LOGIC ---
+
+    // A. Lead Score Distribution (Line Chart)
+    const leadScoreBuckets = Array(11).fill(0);
+    mergedData.forEach((lead) => {
+      const score = Math.round(lead.confidence);
+      const index = Math.min(Math.floor(score / 10), 10);
+      leadScoreBuckets[index]++;
+    });
+    const lineData = [
+      {
+        id: "Lead Score",
+        data: leadScoreBuckets.map((count, i) => ({
+          x: `${i * 10}-${i * 10 + 9}`,
+          y: count,
+        })),
+      },
+    ];
+
+    // B. Job Distribution (Total Count) - Optional if not used
+    const jobCountMap = {};
+    mergedData.forEach((lead) => {
+      const jobName =
+        lead.job.charAt(0).toUpperCase() + lead.job.slice(1).replace(/\./g, "");
+      jobCountMap[jobName] = (jobCountMap[jobName] || 0) + 1;
+    });
+    const jobData = Object.keys(jobCountMap).map((job) => ({
+      label: job,
+      value: jobCountMap[job],
+    }));
+
+    // C. ✅ NEW: Job Success Potential (Average Confidence per Job)
+    // Ini menggantikan data hardcoded. Kita hitung rata-rata skor per pekerjaan.
+    const jobScoreMap = {}; // { admin: { total: 500, count: 10 }, ... }
+
+    mergedData.forEach((lead) => {
+      // Normalisasi nama job agar cocok dengan key translation di frontend
+      // e.g., "admin." -> "admin", "blue-collar" -> "blue-collar"
+      const jobKey = lead.job.toLowerCase().replace(/\.$/, "");
+
+      if (!jobScoreMap[jobKey]) {
+        jobScoreMap[jobKey] = { totalScore: 0, count: 0 };
+      }
+      jobScoreMap[jobKey].totalScore += lead.confidence;
+      jobScoreMap[jobKey].count += 1;
+    });
+
+    // Hitung rata-rata dan format
+    const jobSuccessData = Object.keys(jobScoreMap)
+      .map((key) => ({
+        id: key, // key untuk mapping translation (admin, student, etc)
+        label: key,
+        value: parseFloat(
+          (jobScoreMap[key].totalScore / jobScoreMap[key].count).toFixed(1)
+        ), // Rata-rata skor
+      }))
+      .sort((a, b) => b.value - a.value); // Urutkan dari skor tertinggi
+
+    // D. Result Distribution (Pie/Treemap Data)
+    const resultCountMap = {};
+    mergedData.forEach((lead) => {
+      let res = lead.result || "unknown";
+      resultCountMap[res] = (resultCountMap[res] || 0) + 1;
+    });
+    const resultData = Object.keys(resultCountMap).map((key) => ({
+      id: key,
+      label: key,
+      value: resultCountMap[key],
+    }));
+
+    // E. Status Distribution (Bar Chart Data)
+    const statusCountMap = {};
+    mergedData.forEach((lead) => {
+      let stat = lead.status || "unknown";
+      statusCountMap[stat] = (statusCountMap[stat] || 0) + 1;
+    });
+    const statusData = Object.keys(statusCountMap).map((key) => ({
+      status: key,
+      count: statusCountMap[key],
+    }));
+
+    // Statistik Utama
+    const totalLeads = mergedData.length;
+    const highPotentialLeads = mergedData.filter(
+      (lead) => lead.confidence >= 70
+    ).length;
+    const averageLeadScore = (
+      mergedData.reduce((sum, lead) => sum + lead.confidence, 0) /
+      mergedData.length
+    ).toFixed(2);
+
+    // Table Data (Top 5)
+    const tableData = [...mergedData]
+      .sort((a, b) => b.confidence - a.confidence) // Sort by confidence descending
+      .slice(0, 5)
+      .map((lead) => ({
+        id: lead.id,
+        name: lead.name,
+        leadScore: Math.round(lead.confidence),
+        age: lead.age,
+        job: lead.job.replace(/\.$/, ""),
+        lastContact: lead.month?.toLowerCase() || "-",
+        status: lead.status,
+        result: lead.result,
+      }));
+
+    return NextResponse.json({
       lineData,
       jobData,
-      resultData, // ✅ Kirim ke frontend
-      statusData, // ✅ Kirim ke frontend
+      jobSuccessData, // ✅ Kirim data baru ini
+      resultData,
+      statusData,
       tableData,
       totalLeads,
       highPotentialLeads,
       averageLeadScore,
-    }),
-    { headers: { "Content-Type": "application/json" } }
-  );
+    });
+  } catch (error) {
+    console.error("DASHBOARD GET ERROR:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
-// ... POST function tetap sama ...
 export async function POST(req) {
   try {
     const { id, status, result } = await req.json();
