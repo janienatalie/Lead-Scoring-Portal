@@ -20,6 +20,10 @@ const ResponsiveBar = dynamic(
   () => import("@nivo/bar").then((m) => m.ResponsiveBar),
   { ssr: false }
 );
+const ResponsiveTreeMap = dynamic(
+  () => import("@nivo/treemap").then((m) => m.ResponsiveTreeMap),
+  { ssr: false }
+);
 
 const DashboardPage = () => {
   const { theme } = useTheme();
@@ -35,7 +39,7 @@ const DashboardPage = () => {
       highPotentialLeads: "High Potential Leads",
       averageLeadScore: "Average Lead Score",
       leadScoreDistribution: "Lead Score Distribution",
-      jobDistribution: "Job Distribution",
+      jobDistribution: "Target Golden Profession",
       resultDistribution: "Result Distribution",
       statusDistribution: "Status Distribution",
       potentialLeadsTable: "Potential Leads Table",
@@ -49,6 +53,7 @@ const DashboardPage = () => {
       action: "Action",
       viewDetails: "View Details",
       count: "Count",
+      successRate: "Avg. Potential Score", // Updated Label
       statusOptions: {
         contacted: "Contacted",
         notContacted: "Not Contacted",
@@ -90,7 +95,7 @@ const DashboardPage = () => {
       highPotentialLeads: "Prospek Potensial Tinggi",
       averageLeadScore: "Skor Prospek Rata-rata",
       leadScoreDistribution: "Distribusi Skor Prospek",
-      jobDistribution: "Distribusi Pekerjaan",
+      jobDistribution: "Target Profesi Emas",
       resultDistribution: "Distribusi Hasil",
       statusDistribution: "Distribusi Status",
       potentialLeadsTable: "Tabel Prospek Potensial",
@@ -104,6 +109,7 @@ const DashboardPage = () => {
       action: "Aksi",
       viewDetails: "Lihat Detail",
       count: "Jumlah",
+      successRate: "Rata-rata Skor Potensi", // Updated Label
       statusOptions: {
         contacted: "Dihubungi",
         notContacted: "Belum Dihubungi",
@@ -176,11 +182,11 @@ const DashboardPage = () => {
   // --- STATE ---
   const [lineData, setLineData] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const [jobData, setJobLineData] = useState([]);
 
-  // State Charts
+  // Data State Charts
   const [resultChartData, setResultChartData] = useState([]);
   const [statusChartData, setStatusChartData] = useState([]);
+  const [jobSuccessData, setJobSuccessData] = useState([]); // Data dari Backend
 
   const [totalLeads, setTotalLeads] = useState(0);
   const [highPotentialLeads, setHighPotentialLeads] = useState(0);
@@ -195,50 +201,49 @@ const DashboardPage = () => {
       .then((res) => res.json())
       .then((data) => {
         setLineData(data.lineData || []);
-        setJobLineData(data.jobData || []);
 
-        // 1. STATUS DATA (BAR CHART)
+        // --- 1. JOB SUCCESS RATE (DARI DATA) ---
+        // Data ini sekarang dihitung di backend berdasarkan rata-rata skor per job
+        const rawJobSuccess = data.jobSuccessData || [];
+
+        const formattedJobData = rawJobSuccess.map((item) => ({
+          id: t.jobMapping[item.id] || item.id,
+          label: t.jobMapping[item.id] || item.id,
+          value: item.value,
+        }));
+        setJobSuccessData(formattedJobData);
+
+        // 2. STATUS DATA
         const rawStatusData = data.statusData || [];
-        const requiredStatuses = [
-          "contacted",
-          "not.contacted",
-          "attempted.contacted",
-        ];
-
-        // Hitung manual agar unknown masuk ke not.contacted
         const statusCounts = {
           contacted: 0,
           "not.contacted": 0,
           "attempted.contacted": 0,
         };
-
         rawStatusData.forEach((item) => {
-          if (item.status === "contacted") {
+          if (item.status === "contacted")
             statusCounts["contacted"] += item.count;
-          } else if (item.status === "attempted.contacted") {
+          else if (item.status === "attempted.contacted")
             statusCounts["attempted.contacted"] += item.count;
-          } else {
-            statusCounts["not.contacted"] += item.count;
-          }
+          else statusCounts["not.contacted"] += item.count;
         });
-
-        const finalStatusData = [
+        setStatusChartData([
           { status: "contacted", count: statusCounts["contacted"] },
           { status: "not.contacted", count: statusCounts["not.contacted"] },
           {
             status: "attempted.contacted",
             count: statusCounts["attempted.contacted"],
           },
-        ];
-        setStatusChartData(finalStatusData);
+        ]);
 
-        // 2. RESULT DATA (PIE CHART) - ✅ Format untuk Pie Chart
-        const resultPieData = (data.resultData || []).map((item) => ({
-          id: item.id,
-          label: item.label,
-          value: item.value,
-        }));
-        setResultChartData(resultPieData);
+        // 3. RESULT DATA
+        setResultChartData(
+          (data.resultData || []).map((item) => ({
+            id: item.id,
+            label: item.label,
+            value: item.value,
+          }))
+        );
 
         setTableData(data.tableData || []);
         setTotalLeads(data.totalLeads || 0);
@@ -265,8 +270,9 @@ const DashboardPage = () => {
       .then((res) => res.json())
       .then((data) => setUser(data))
       .catch((err) => console.error("Error fetching user:", err));
-  }, []);
+  }, [lang]);
 
+  // --- HANDLERS ---
   const updateStatus = async (leadId, newStatus) => {
     setLeadStatuses((prev) => ({ ...prev, [leadId]: newStatus }));
     if (newStatus !== "contacted") {
@@ -365,7 +371,7 @@ const DashboardPage = () => {
           ))}
         </section>
 
-        {/* CHARTS GRID (2 Kolom x 2 Baris = 4 Chart) */}
+        {/* CHARTS GRID */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* 1. LEAD SCORE DISTRIBUTION (LINE) */}
           <div
@@ -374,7 +380,7 @@ const DashboardPage = () => {
             <h2 className="text-lg font-semibold mb-4">
               {t.leadScoreDistribution}
             </h2>
-            <div className="h-72">
+            <div className="h-80">
               {lineData.length > 0 && (
                 <ResponsiveLine
                   data={lineData}
@@ -402,7 +408,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* 2. JOB DISTRIBUTION (DONUT PIE - Berlubang) */}
+          {/* 2. ✅ TARGET PROFESI EMAS (DOUGHNUT CHART - DARI DATA) */}
           <div
             className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
           >
@@ -410,36 +416,22 @@ const DashboardPage = () => {
               <h2 className="text-lg font-semibold">{t.jobDistribution}</h2>
             </div>
             <div className="h-72">
-              {jobData.length > 0 && (
+              {jobSuccessData.length > 0 && (
                 <ResponsivePie
-                  data={jobData.map((j) => ({
-                    id: t.jobMapping[j.label.toLowerCase()] || j.label,
-                    label: t.jobMapping[j.label.toLowerCase()] || j.label,
-                    value: j.value,
-                  }))}
-                  margin={{ top: 20, right: 140, bottom: 20, left: 20 }}
-                  innerRadius={0.6} // ✅ Donut (Berlubang)
+                  data={jobSuccessData}
+                  margin={{ top: 40, right: 20, bottom: 20, left: 20 }}
+                  innerRadius={0.6} // Doughnut Effect
                   padAngle={0.5}
                   cornerRadius={3}
                   activeOuterRadiusOffset={8}
                   colors={{ scheme: "paired" }}
                   borderWidth={1}
                   borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
-                  enableArcLinkLabels={false}
-                  enableArcLabels={true}
-                  legends={[
-                    {
-                      anchor: "right",
-                      direction: "column",
-                      translateX: 120,
-                      itemsSpacing: 2,
-                      itemWidth: 100,
-                      itemHeight: 18,
-                      itemTextColor: chartTextColor,
-                      symbolSize: 12,
-                      symbolShape: "circle",
-                    },
-                  ]}
+                  enableArcLinkLabels={true}
+                  arcLinkLabelsSkipAngle={10}
+                  arcLinkLabelsTextColor={chartTextColor}
+                  enableArcLabels={false}
+                  valueFormat={(value) => `${value}%`}
                   theme={{
                     tooltip: {
                       container: {
@@ -471,8 +463,6 @@ const DashboardPage = () => {
                   indexBy="status"
                   margin={{ top: 20, right: 30, bottom: 50, left: 80 }}
                   padding={0.3}
-                  valueScale={{ type: "linear" }}
-                  indexScale={{ type: "band", round: true }}
                   colors={{ scheme: "set2" }}
                   axisTop={null}
                   axisRight={null}
@@ -503,7 +493,6 @@ const DashboardPage = () => {
                       ticks: { text: { fill: chartTextColor } },
                       legend: { text: { fill: chartTextColor } },
                     },
-                    // ✅ FIX: Menambahkan grid line color untuk Dark Mode
                     grid: { line: { stroke: gridLineColor } },
                     tooltip: {
                       container: {
@@ -520,6 +509,7 @@ const DashboardPage = () => {
               )}
             </div>
           </div>
+
           {/* 4. RESULT DISTRIBUTION (SOLID PIE CHART - KANAN) */}
           <div
             className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
@@ -536,15 +526,13 @@ const DashboardPage = () => {
                     value: r.value,
                   }))}
                   margin={{ top: 20, right: 140, bottom: 20, left: 20 }}
-                  // ✅ UBAH: innerRadius={0} agar menjadi Pie Penuh (Tidak Bolong)
-                  innerRadius={0}
+                  innerRadius={0} // Solid Pie
                   padAngle={0.5}
                   cornerRadius={3}
                   colors={{ scheme: "nivo" }}
                   borderWidth={1}
                   borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
                   enableArcLinkLabels={false}
-                  // Legend tetap di kanan agar konsisten
                   legends={[
                     {
                       anchor: "right",
@@ -575,7 +563,6 @@ const DashboardPage = () => {
             </div>
           </div>
         </section>
-
         {/* TABLE */}
         <section
           className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
