@@ -510,15 +510,12 @@ const LeadScorePage = () => {
 
         {/* TABEL */}
         <section
-          className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
+          className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass} grid grid-cols-1`}
         >
           <style>{scrollbarStyle}</style>
           <h2 className="text-lg font-semibold mb-4">{t.leadScoreTable}</h2>
 
-          <div
-            className="table-scroll-container overflow-x-auto max-w-full"
-            style={{ maxWidth: "995px" }}
-          >
+          <div className="w-full overflow-x-auto table-scroll-container">
             <table className="min-w-[1100px] divide-y divide-borderColorLight dark:divide-borderColorDark">
               <thead className={tableHeaderBgClass}>
                 <tr>

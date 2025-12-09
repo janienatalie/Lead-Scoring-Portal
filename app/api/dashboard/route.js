@@ -143,7 +143,7 @@ export async function GET(req) {
     return NextResponse.json({
       lineData,
       jobData,
-      jobSuccessData, // ✅ Kirim data baru ini
+      jobSuccessData, 
       resultData,
       statusData,
       tableData,

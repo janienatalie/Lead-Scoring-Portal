@@ -416,23 +416,46 @@ const DashboardPage = () => {
               <h2 className="text-lg font-semibold">{t.jobDistribution}</h2>
             </div>
             <div className="h-72">
-              {jobSuccessData.length > 0 && (
-                <ResponsivePie
+              {jobSuccessData.length > 0 ? (
+                <ResponsiveBar
                   data={jobSuccessData}
-                  margin={{ top: 40, right: 20, bottom: 20, left: 20 }}
-                  innerRadius={0.6} // Doughnut Effect
-                  padAngle={0.5}
-                  cornerRadius={3}
-                  activeOuterRadiusOffset={8}
-                  colors={{ scheme: "paired" }}
-                  borderWidth={1}
-                  borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
-                  enableArcLinkLabels={true}
-                  arcLinkLabelsSkipAngle={10}
-                  arcLinkLabelsTextColor={chartTextColor}
-                  enableArcLabels={false}
+                  keys={["value"]}
+                  indexBy="label"
+                  margin={{ top: 20, right: 20, bottom: 70, left: 50 }}
+                  padding={0.3}
+                  enableLabel={false} 
+                  colors={{ scheme: "category10" }}
+                  axisTop={null}
+                  axisRight={null}
+                  axisBottom={{
+                    tickSize: 5,
+                    tickPadding: 5,
+                    tickRotation: -45,
+                    legend: "",
+                    legendPosition: "middle",
+                    legendOffset: 32,
+                  }}
+                  axisLeft={{
+                    tickSize: 5,
+                    tickPadding: 5,
+                    tickRotation: 0,
+                    legend: t.successRate,
+                    legendPosition: "middle",
+                    legendOffset: -45,
+                  }}
+                  labelSkipWidth={12}
+                  labelSkipHeight={12}
+                  labelTextColor={{
+                    from: "color",
+                    modifiers: [["darker", 1.6]],
+                  }}
                   valueFormat={(value) => `${value}%`}
                   theme={{
+                    axis: {
+                      ticks: { text: { fill: chartTextColor } },
+                      legend: { text: { fill: chartTextColor } },
+                    },
+                    grid: { line: { stroke: gridLineColor } },
                     tooltip: {
                       container: {
                         background: tooltipBg,
@@ -441,6 +464,10 @@ const DashboardPage = () => {
                     },
                   }}
                 />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  No Data
+                </div>
               )}
             </div>
           </div>
@@ -565,7 +592,7 @@ const DashboardPage = () => {
         </section>
         {/* TABLE */}
         <section
-          className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass}`}
+          className={`p-6 rounded-xl shadow-custom-sm border ${tableBorderColor} ${cardBgClass} grid grid-cols-1`}
         >
           <style>{`
             .table-scroll-container::-webkit-scrollbar { height: 8px; }
@@ -579,10 +606,7 @@ const DashboardPage = () => {
           <h2 className="text-lg font-semibold mb-4">
             {t.potentialLeadsTable}
           </h2>
-          <div
-            className="table-scroll-container overflow-x-auto max-w-full"
-            style={{ maxWidth: "995px" }}
-          >
+          <div className="w-full overflow-x-auto table-scroll-container">
             <table className="min-w-[1000px] divide-y divide-borderColorLight dark:divide-borderColorDark">
               <thead className={tableHeaderBgClass}>
                 <tr>

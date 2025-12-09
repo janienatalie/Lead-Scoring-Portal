@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, AlertTriangle } from "lucide-react";
 import { useTheme } from "../../../context/ThemeContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useRouter } from "next/navigation";
@@ -31,6 +31,19 @@ const translations = {
     status: "Status",
     yes: "Yes",
     no: "No",
+    communicationStyleTip: "Communication Style Tip",
+    communicationTips: {
+      "basic.4y": "Use simple language, focus on immediate benefits and fund security.",
+      "basic.6y": "Use simple language, focus on immediate benefits and fund security.",
+      "basic.9y": "Use simple language, focus on immediate benefits and fund security.",
+      "high.school": "Use simple language but include some product/benefit details.",
+      "illiterate": "Use very simple language, real examples, focus on fund security.",
+      "professional.course": "Use moderately formal language, emphasize practical benefits.",
+      "university.degree": "Use formal language and emphasize product data/details.",
+      "unknown": "-"
+    },
+    highContactFrequency: "High Contact Frequency",
+    contactWarningMessage: "This prospect has been contacted {count} times. Consider spacing out future contacts.",
     jobValues: {
       "admin.": "Admin",
       "blue-collar": "Blue-collar",
@@ -127,12 +140,25 @@ const translations = {
     housingLoan: "KPR",
     personalLoan: "Pinjaman Pribadi",
     defaultLoan: "Pinjaman Default",
+    communicationStyleTip: "Tips Gaya Komunikasi",
+    communicationTips: {
+      "basic.4y": "Gunakan bahasa sederhana, fokus pada manfaat langsung dan keamanan dana.",
+      "basic.6y": "Gunakan bahasa sederhana, fokus pada manfaat langsung dan keamanan dana.",
+      "basic.9y": "Gunakan bahasa sederhana, fokus pada manfaat langsung dan keamanan dana.",
+      "high.school": "Gunakan bahasa sederhana tapi sertakan sedikit detail produk/benefit.",
+      "illiterate": "Gunakan bahasa sangat sederhana, contoh nyata, fokus keamanan dana.",
+      "professional.course": "Gunakan bahasa cukup formal, tekankan manfaat praktis.",
+      "university.degree": "Gunakan bahasa formal dan tekankan data/detail produk.",
+      "unknown": "-"
+    },
     date: "Tanggal",
     contact: "Kontak",
     result: "Hasil",
     status: "Status",
     yes: "Ya",
     no: "Tidak",
+    highContactFrequency: "Frekuensi Kontak Tinggi",
+    contactWarningMessage: "Prospek ini sudah dihubungi {count} kali. Pertimbangkan jeda sebelum menghubungi lagi.",
     jobValues: {
       "admin.": "Admin",
       "blue-collar": "Buruh",
@@ -213,7 +239,6 @@ const translations = {
   },
 };
 
-// Helper function untuk ambil value sesuai bahasa
 function translateField(fieldType, value, lang) {
   if (!value) return "-";
   if (fieldType === "status") {
@@ -228,6 +253,30 @@ function translateField(fieldType, value, lang) {
 function capitalizeFirstLetter(string) {
   if (!string) return "-";
   return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// ✅ KOMPONEN ANTI-SPAMMING ALERT
+function AntiSpammingAlert({ campaign, lang, bgCard, borderColor, textMain, textSecondary }) {
+  const t = translations[lang];
+  const isHighFrequency = campaign > 5;
+
+  if (!isHighFrequency) return null;
+
+  const warningMessage = t.contactWarningMessage.replace("{count}", campaign);
+
+return (
+    <div className={`rounded-xl border-2 border-yellow-400 dark:border-yellow-400 bg-yellow-50 dark:bg-yellow-900/40 p-4 flex gap-3 items-start`}>
+      <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-300 flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <h4 className="font-semibold text-yellow-800 dark:text-yellow-100 text-sm mb-1">
+          {t.highContactFrequency}
+        </h4>
+        <p className="text-yellow-700 dark:text-yellow-50 text-sm leading-relaxed">
+          {warningMessage}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function NasabahDetailPage({ params: paramsPromise }) {
@@ -269,25 +318,12 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
     fetchData();
   }, [id]);
 
-  // ✅ PERBAIKAN: Logic Warna Loan
   const getLoanStyle = (value) => {
-    // Cek value ada dan ubah ke lowercase untuk memastikan kecocokan "Yes" vs "yes"
     const isYes = value && value.toLowerCase() === "yes";
     if (isYes) {
       return "text-white bg-gradient-to-r from-primary to-secondary hover:brightness-110 shadow-md border-transparent";
     } else {
       return "text-gray-500 bg-gray-200 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600";
-    }
-  };
-
-  const getPoutcomeColor = (poutcome) => {
-    switch (poutcome) {
-      case "success":
-        return "text-green-600";
-      case "unknown":
-        return "text-yellow-500";
-      default:
-        return "text-red-600";
     }
   };
 
@@ -323,11 +359,12 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
     }
   }, [nasabah]);
 
-  // Helper untuk mengambil data loan yang aman (cek di root atau financialInfo)
   const housingData = nasabah?.financialInfo?.hasHousing ?? nasabah?.housing ?? "no";
   const loanData = nasabah?.financialInfo?.hasLoan ?? nasabah?.loan ?? "no";
   const defaultData = nasabah?.financialInfo?.hasDefault ?? nasabah?.default ?? "no";
+  const campaignCount = nasabah?.campaignInfo?.campaign ?? 0;
 
+  
   return (
     <div className={`min-h-screen p-4 ${bgScreen}`}>
       <div
@@ -434,7 +471,6 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                         )}
                       </p>
                     </div>
-                    {/* STATUS */}
                     <div>
                       <p className={`${textSecondary} text-sm mb-1`}>
                         {t.status}
@@ -442,12 +478,11 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                       <p className={`${textMain} font-medium capitalize`}>
                         {translateField(
                           "status",
-                          nasabah?.campaignInfo?.status, // Ambil dari root
+                          nasabah?.campaignInfo?.status,
                           lang
                         )}
                       </p>
                     </div>
-                    {/* RESULT */}
                     <div>
                       <p className={`${textSecondary} text-sm mb-1`}>
                         {t.result}
@@ -455,7 +490,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                       <p className={`${textMain} font-medium capitalize`}>
                         {translateField(
                           "result",
-                          nasabah?.campaignInfo?.result, // Ambil dari root
+                          nasabah?.campaignInfo?.result,
                           lang
                         )}
                       </p>
@@ -472,6 +507,8 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
 
           {/* Right Content */}
           <div className="lg:col-span-2 flex flex-col space-y-6">
+
+
             {/* Overview */}
             <div className={`${bgCard} rounded-xl border ${borderColor} p-6`}>
               <h3 className={`text-lg font-semibold ${textMain} mb-6`}>
@@ -493,18 +530,35 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                   </div>
                 </div>
 
-                {/* Number of Contact */}
+                {/* ✅ Number of Contact  */}
                 <div
                   className={`rounded-xl shadow-custom-sm border ${borderColor} p-4 ${bgCard}`}
                 >
-                  <p className={`${textSecondary} text-sm mb-2`}>
-                    {t.numberOfContact}
+                  <p className={`${textSecondary} text-sm mb-2 flex items-center gap-1`}>
+                    {t.numberOfContact} 
+                    {campaignCount > 5 && (
+                      <span className="text-yellow-600 dark:text-yellow-400 ml-auto">⚠️</span>
+                    )}
                   </p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {/* Ambil data previous */}
-                    {nasabah?.campaignInfo?.previous ?? 0}
-                  </p>
+
+                  <div className="flex items-center gap-3 mb-3">
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {campaignCount}
+                    </p>
+
+                    {campaignCount > 5 && (
+                      <div
+                        className={`ml-auto inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium
+                          bg-yellow-100 text-yellow-700
+                          dark:bg-yellow-900/30 dark:text-yellow-300
+                        `}
+                      >
+                        {t.highContactFrequency}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -543,7 +597,7 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
                 </div>
               </div>
 
-              {/* Products (Loan Logic Updated) */}
+              {/* Products */}
               <div className="flex flex-wrap gap-3 justify-center">
                 <button
                   className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${getLoanStyle(
@@ -569,84 +623,26 @@ export default function NasabahDetailPage({ params: paramsPromise }) {
               </div>
             </div>
 
-            {/* Last Campaign Table */}
-            <div
-              className={`${bgCard} rounded-xl border ${borderColor} p-6 flex flex-col flex-1`}
-            >
-              <h3
-                className={`text-lg font-semibold ${textMain} mb-6 flex-shrink-0`}
-              >
-                {t.lastCampaign}
+            {/* Gaya Komunikasi */}
+            <div className={`${bgCard} rounded-xl border ${borderColor} p-6 flex flex-col flex-1`}>
+              <h3 className={`text-lg font-semibold ${textMain} mb-6`}>
+                {t.communicationStyleTip}
               </h3>
 
-              <div className="overflow-y-auto flex-1">
-                <table className="w-full table-fixed">
-                  <thead className="sticky top-0 bg-inherit">
-                    <tr className={`border-b ${borderColor}`}>
-                      <th
-                        className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary} w-[40%]`}
-                      >
-                        {t.date}
-                      </th>
-                      <th
-                        className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary} w-[30%]`}
-                      >
-                        {t.contact}
-                      </th>
-                      <th
-                        className={`px-4 py-3 text-left text-sm font-semibold ${textSecondary} w-[30%]`}
-                      >
-                        {t.result}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className={`border-b ${borderColor} ${hoverBg}`}>
-                      <td className={`px-4 py-4 text-sm ${textMain}`}>
-                        {nasabah
-                          ? translateField(
-                              "month",
-                              nasabah.campaignInfo.month,
-                              lang
-                            )
-                          : "-"}
-                      </td>
-                      <td className={`px-4 py-4 text-sm ${textMain}`}>
-                        {nasabah
-                          ? translateField(
-                              "contact",
-                              nasabah.campaignInfo.contact,
-                              lang
-                            )
-                          : "-"}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`inline-block px-3 py-1 text-xs font-medium rounded-xl ${
-                            nasabah?.campaignInfo?.poutcome === "success"
-                              ? "bg-green-100 text-green-700"
-                              : nasabah?.campaignInfo?.poutcome === "unknown"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : nasabah?.campaignInfo?.poutcome ===
-                                "attempted.contacted"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {capitalizeFirstLetter(
-                            translateField(
-                              "poutcome",
-                              nasabah?.campaignInfo?.poutcome,
-                              lang
-                            )
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              {nasabah?.personalInfo?.education ? (
+                <div className={`rounded-xl border p-4 
+                  bg-green-50 dark:bg-green-900/30 
+                  border-greeb-300 dark:border-green-600
+                  text-green-900 dark:text-green-100`}>
+                  <p className="text-sm leading-relaxed">
+                    {translations[lang]?.communicationTips[nasabah.personalInfo.education] ?? "-"}
+                  </p>
+                </div>
+              ) : (
+                <p className={`${textSecondary} text-sm`}>-</p>
+              )}
             </div>
+
           </div>
         </div>
       </div>
