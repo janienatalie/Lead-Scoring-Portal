@@ -115,7 +115,6 @@ Lead-Scoring-Portal/
 ├── eslint.config.mjs           # ESLint rules & formatting
 ├── venv161/                    # Python virtual environment
 ├── bank-additional-full.csv    # Historical lead data (source)
-├── predicted_leads_tuned.csv   # ML predictions output (to process)
 └── README.md                   # This file
 ```
 
