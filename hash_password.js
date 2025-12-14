@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 
 // GANTI password ini dengan password asli yang ingin kamu hash
-const plainPassword = "janie123";
+const plainPassword = "admin123";
 
 async function generateHash() {
   try {
